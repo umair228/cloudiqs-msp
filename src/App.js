@@ -71,13 +71,18 @@ function App() {
 
   function setData() {
     getUser().then((userData) => {
-      setUser(userData);
-      const payload = userData.signInUserSession.idToken.payload;
-      setcognitoGroups(payload["cognito:groups"]);
-      setUserId(payload.userId);
-      setGroupIds((payload.groupIds).split(','));
-      setGroups((payload.groups).split(','));
-      setLoading(false);
+      if (userData && userData.signInUserSession && userData.signInUserSession.idToken) {
+        setUser(userData);
+        const payload = userData.signInUserSession.idToken.payload;
+        setcognitoGroups(payload["cognito:groups"]);
+        setUserId(payload.userId);
+        setGroupIds((payload.groupIds).split(','));
+        setGroups((payload.groups).split(','));
+        setLoading(false);
+      } else {
+        console.log("User data not available or incomplete");
+        setLoading(false);
+      }
     });
   }
 
@@ -87,7 +92,8 @@ function App() {
       return userData;
     } catch {
       setLoading(false);
-      return console.log("Not signed in");
+      console.log("Not signed in");
+      return null;
     }
   }
 

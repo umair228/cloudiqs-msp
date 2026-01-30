@@ -25,7 +25,9 @@ npm install
 npm start
 ```
 
-✅ **The app should now compile successfully!**
+✅ **The app should now compile and run successfully!**
+
+The app will load with a "Federated Sign In" button. Authentication requires full Amplify deployment, but the UI is fully testable locally.
 
 ---
 
