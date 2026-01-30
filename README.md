@@ -26,7 +26,22 @@ npm start
 
 ⚠️ **Important**: The `aws-exports.js` file is in `.gitignore` and must be copied from the sample file before the app will compile.
 
-For detailed setup instructions, see [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md).
+### Deploying to AWS
+
+If you need to deploy the backend to AWS (for production use):
+
+```bash
+# Initialize Amplify environment (first time only)
+amplify init
+
+# Deploy all backend resources
+amplify push
+```
+
+**Getting error "Current environment cannot be determined"?**  
+See [AMPLIFY_SETUP_GUIDE.md](AMPLIFY_SETUP_GUIDE.md) for detailed step-by-step instructions.
+
+For more setup details, see [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md).
 
 ---
 
