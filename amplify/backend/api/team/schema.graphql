@@ -1,3 +1,26 @@
+type Customer
+  @model
+  @auth(
+    rules: [
+      { allow: groups, groups: ["Admin"] }
+      { allow: groups, groupClaim: "scope", groups: ["api/admin"] }
+      { allow: private, operations: [read] }
+      { allow: private, provider: iam, operations: [read, update] }
+    ]
+  ) {
+  id: ID!
+  name: String!
+  email: String!
+  awsAccountIds: [String]
+  status: String
+  approverEmail: String!
+  companyName: String
+  contactPerson: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+  notificationPreferences: AWSJSON
+}
+
 type requests
   @model(subscriptions: { level: off })
   @auth(
@@ -9,6 +32,13 @@ type requests
     ]
   ) {
   id: ID!
+  customerId: String
+    @index(
+      name: "byCustomerAndStatus"
+      sortKeyFields: ["status"]
+      queryField: "requestByCustomerAndStatus"
+    )
+  customerName: String
   email: String
     @index(
       name: "byEmailAndStatus"
@@ -112,6 +142,8 @@ type requests
     ]
   )
   session_duration: String
+  approvalToken: String
+  customerApprovalEmail: String
 }
 type sessions
   @model(subscriptions: { level: off })
@@ -125,6 +157,7 @@ type sessions
     ]
   ) {
   id: String!
+  customerId: String
   startTime: String
   endTime: String
   username: String
@@ -133,6 +166,7 @@ type sessions
   approver_ids: [String]
   queryId: String
   expireAt: AWSTimestamp @ttl
+  aiSummary: String
 }
 type Approvers
   @model
@@ -145,6 +179,7 @@ type Approvers
     ]
   ) {
   id: ID
+  customerId: String
   name: String
   type: String
   approvers: [String]
@@ -197,6 +232,7 @@ type Eligibility
     ]
   ) {
   id: ID
+  customerId: String
   name: String
   type: String
   accounts: [data]
