@@ -27,12 +27,18 @@ import {
 import { useHistory } from "react-router-dom";
 import { API, graphqlOperation } from "aws-amplify";
 import { onPublishPolicy } from "../../graphql/subscriptions";
+import { listCustomers } from "../../graphql/queries";
 import params from "../../parameters.json";
 
 function Request(props) {
   const [email, setEmail] = useState("");
 
   const [item, setItem] = useState([]);
+  
+  const [customer, setCustomer] = useState([]);
+  const [customerError, setCustomerError] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [customerStatus, setCustomerStatus] = useState("loading");
 
   const [duration, setDuration] = useState("");
   const [durationError, setDurationError] = useState("");
@@ -162,11 +168,26 @@ function Request(props) {
     });
   }
 
+  async function fetchCustomers() {
+    try {
+      const response = await API.graphql({
+        query: listCustomers,
+      });
+      const customerList = response.data.listCustomers.items;
+      setCustomers(customerList.filter(c => c.status === 'active'));
+      setCustomerStatus("finished");
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      setCustomerStatus("error");
+    }
+  }
+
   useEffect(() => {
     setEmail(props.user);
     getSettings();
     // getEligibility();
     getPolicy();
+    fetchCustomers();
     props.addNotification([]);
     getMgmtPs();
     setTime(moment().format());
@@ -176,6 +197,8 @@ function Request(props) {
 
   function sendRequest() {
     const data = {
+      customerId: customer.value,
+      customerName: customer.label,
       accountId: account.value,
       accountName: account.label,
       role: role.label,
@@ -220,6 +243,10 @@ function Request(props) {
 
   async function validate() {
     let error = false;
+    if (!customer.value) {
+      setCustomerError("Select a customer");
+      error = true;
+    }
     if (
       !duration ||
       isNaN(duration) ||
@@ -377,6 +404,31 @@ function Request(props) {
               description="Elevated access requester username"
             >
               <Input value={email} type="email" />
+            </FormField>
+            <FormField
+              label="Customer"
+              stretch
+              description="Select the target customer for this access request"
+              errorText={customerError}
+            >
+              <Select
+                statusType={customerStatus}
+                placeholder="Select a customer"
+                loadingText="Loading customers"
+                filteringType="auto"
+                empty="No customers found"
+                options={customers.map((cust) => ({
+                  label: cust.name,
+                  value: cust.id,
+                  description: cust.companyName,
+                }))}
+                selectedOption={customer}
+                onChange={(event) => {
+                  setCustomerError();
+                  setCustomer(event.detail.selectedOption);
+                }}
+                selectedAriaLabel="selected"
+              />
             </FormField>
             <FormField
               label="Account"
