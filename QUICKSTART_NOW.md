@@ -6,13 +6,22 @@ All compilation errors have been resolved. The app now builds successfully!
 
 ## Quick Test (5 minutes)
 
-### 1. Install Dependencies
+### 1. Copy AWS Config (REQUIRED!)
 ```bash
 cd /home/runner/work/cloudiqs-msp/cloudiqs-msp
+
+# Copy the sample aws-exports file
+cp src/aws-exports.sample.js src/aws-exports.js
+```
+
+⚠️ **Important**: This step is REQUIRED! The `aws-exports.js` file is in `.gitignore`, so you must copy it from the sample file.
+
+### 2. Install Dependencies
+```bash
 npm install
 ```
 
-### 2. Start Development Server
+### 3. Start Development Server
 ```bash
 npm start
 ```

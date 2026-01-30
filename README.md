@@ -8,6 +8,28 @@ The solution is a custom application that allows users to **request access to an
 Refer to the [blog post on the AWS Security Blog](https://aws.amazon.com/blogs/security/temporary-elevated-access-management-with-iam-identity-center/) for a background and an overview of the TEAM solution.
 
 ![](docs/docs/assets/images/home_page.png)
+
+## 🚀 Quick Start (CloudiQS MSP Version)
+
+**Before you start**, you need to copy the AWS configuration sample file:
+
+```bash
+# Copy the sample aws-exports file (REQUIRED!)
+cp src/aws-exports.sample.js src/aws-exports.js
+
+# Install dependencies
+npm install
+
+# Start the app
+npm start
+```
+
+⚠️ **Important**: The `aws-exports.js` file is in `.gitignore` and must be copied from the sample file before the app will compile.
+
+For detailed setup instructions, see [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md).
+
+---
+
 ## Getting Started
 Visit our **[Documentation pages](https://aws-samples.github.io/iam-identity-center-team/)** to learn more and get started installing and using TEAM.
 
