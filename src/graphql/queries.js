@@ -556,3 +556,49 @@ export const validateRequest = /* GraphQL */ `
     }
   }
 `;
+
+export const getCustomer = /* GraphQL */ `
+  query GetCustomer($id: ID!) {
+    getCustomer(id: $id) {
+      id
+      name
+      email
+      awsAccountIds
+      status
+      approverEmail
+      companyName
+      contactPerson
+      createdAt
+      updatedAt
+      notificationPreferences
+      __typename
+    }
+  }
+`;
+
+export const listCustomers = /* GraphQL */ `
+  query ListCustomers(
+    $filter: ModelCustomerFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listCustomers(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        name
+        email
+        awsAccountIds
+        status
+        approverEmail
+        companyName
+        contactPerson
+        createdAt
+        updatedAt
+        notificationPreferences
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
