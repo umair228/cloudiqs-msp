@@ -31,7 +31,19 @@ const awsmobile = {
   "aws_cognito_region": "us-east-1",
   "aws_user_pools_id": "us-east-1_XXXXXXXXX",
   "aws_user_pools_web_client_id": "XXXXXXXXXXXXXXXXXXXXXXXXXX",
-  "oauth": {},
+  "oauth": {
+    "domain": "your-domain.auth.us-east-1.amazoncognito.com",
+    "scope": [
+      "phone",
+      "email",
+      "openid",
+      "profile",
+      "aws.cognito.signin.user.admin"
+    ],
+    "redirectSignIn": "http://localhost:3000/",
+    "redirectSignOut": "http://localhost:3000/",
+    "responseType": "code"
+  },
   "aws_cognito_username_attributes": [
     "EMAIL"
   ],

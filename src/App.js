@@ -16,6 +16,15 @@ const { Header, Content } = Layout;
 Amplify.configure(awsconfig);
 
 function Home(props) {
+  const handleFederatedSignIn = async () => {
+    try {
+      await Auth.federatedSignIn();
+    } catch (error) {
+      console.log("Federated sign in not available:", error.message);
+      alert("Authentication is not configured. Please run 'amplify push' to set up AWS Cognito.");
+    }
+  };
+
   return (
     <Layout className="site-layout">
       <Header className="site-layout-background" style={{ padding: 0 }} />
@@ -24,7 +33,7 @@ function Home(props) {
           <Button
             className="homebutton"
             variant="primary"
-            onClick={() => Auth.federatedSignIn()}
+            onClick={handleFederatedSignIn}
           >
             Federated Sign In
           </Button>
