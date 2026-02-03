@@ -158,6 +158,34 @@ cd deployment
 
 ## Troubleshooting Quick Fixes
 
+### Problem: "remote codecommit already exists" with 403 error
+
+**Your remote is using the WRONG URL!**
+
+Check your remote:
+```bash
+git remote -v
+```
+
+If you see `https://git-codecommit...` instead of `codecommit::us-east-1://`, fix it:
+
+```bash
+# 1. Install helper
+pip3 install git-remote-codecommit
+
+# 2. Configure AWS
+aws configure
+
+# 3. Fix the remote URL
+git remote remove codecommit
+git remote add codecommit codecommit::us-east-1://team-idc-app
+
+# 4. Try pushing again
+git push codecommit main
+```
+
+**📖 See complete fix: [TROUBLESHOOTING_CODECOMMIT.md](TROUBLESHOOTING_CODECOMMIT.md)**
+
 ### Problem: "git push codecommit main" fails with 403 error
 
 **Most Common Cause**: AWS credentials not configured or git-remote-codecommit not installed.

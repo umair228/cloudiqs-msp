@@ -1,5 +1,42 @@
 # AWS CodeCommit Authentication Guide
 
+## 🚨 Common Issue: "remote codecommit already exists" + 403 Error
+
+**If you're seeing this exact scenario:**
+```bash
+$ git remote add codecommit codecommit::us-east-1://team-idc-app
+error: remote codecommit already exists.
+
+$ git remote -v
+codecommit      https://git-codecommit.us-east-1.amazonaws.com/v1/repos/team-idc-app (fetch)
+codecommit      https://git-codecommit.us-east-1.amazonaws.com/v1/repos/team-idc-app (push)
+
+$ git push codecommit main
+fatal: unable to access 'https://git-codecommit...': error 403
+```
+
+**👉 Your remote is using the WRONG URL format!**
+
+**Quick Fix:**
+```bash
+# 1. Install helper
+pip3 install git-remote-codecommit
+
+# 2. Configure AWS
+aws configure
+
+# 3. Fix the remote URL
+git remote remove codecommit
+git remote add codecommit codecommit::us-east-1://team-idc-app
+
+# 4. Push
+git push codecommit main
+```
+
+**📖 For detailed fix steps, see: [TROUBLESHOOTING_CODECOMMIT.md](TROUBLESHOOTING_CODECOMMIT.md)**
+
+---
+
 ## Problem: 403 Error When Pushing to CodeCommit
 
 If you're getting this error:

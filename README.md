@@ -15,9 +15,21 @@ This fork extends the AWS TEAM solution with **Managed Service Provider (MSP)** 
 
 ## 🚀 Deployment & Sync Workflows
 
+### Having Issues?
+
+- **🆘 [CodeCommit Troubleshooting](TROUBLESHOOTING_CODECOMMIT.md)** - Fix "remote already exists" and 403 errors
+- **🔑 [AWS Authentication Guide](AWS_CODECOMMIT_AUTH.md)** - Fix credential and permission issues
+
 ### Quick Deployment
 
 **TL;DR**: To deploy latest changes, run: `git push codecommit main`
+
+**Getting errors?** Check your git remote URL format:
+```bash
+git remote -v
+# Should show: codecommit::us-east-1://team-idc-app
+# NOT: https://git-codecommit.us-east-1.amazonaws.com/...
+```
 
 ### Documentation Guides
 
