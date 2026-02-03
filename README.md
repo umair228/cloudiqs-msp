@@ -15,10 +15,15 @@ This fork extends the AWS TEAM solution with **Managed Service Provider (MSP)** 
 
 ## 🚀 Deployment & Sync Workflows
 
+### Just Pushed to CodeCommit?
+
+**📊 [Check Build Status](AMPLIFY_MONITORING.md)** - Monitor your Amplify rebuild and troubleshoot if build doesn't start
+
 ### Having Issues?
 
 - **🆘 [CodeCommit Troubleshooting](TROUBLESHOOTING_CODECOMMIT.md)** - Fix "remote already exists" and 403 errors
 - **🔑 [AWS Authentication Guide](AWS_CODECOMMIT_AUTH.md)** - Fix credential and permission issues
+- **📊 [Amplify Monitoring Guide](AMPLIFY_MONITORING.md)** - Check rebuild status and trigger manual rebuilds
 
 ### Quick Deployment
 

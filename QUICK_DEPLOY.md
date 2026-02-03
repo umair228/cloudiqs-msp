@@ -29,9 +29,9 @@ That's it! AWS Amplify will automatically:
 
 ### Monitor the Build
 
-Watch the progress:
+After pushing, check if your build started:
 
-1. **Via AWS Console**: 
+1. **Via AWS Console** (Easiest): 
    - Go to AWS Amplify Console
    - Select "TEAM-IDC-APP"
    - Click "main" branch
@@ -39,9 +39,18 @@ Watch the progress:
 
 2. **Via CLI**:
    ```bash
-   # Get build status
-   aws amplify list-jobs --app-id <your-app-id> --branch-name main --region us-east-1
+   # Check if build is running
+   ./check-build.sh
+   
+   # Or manually trigger rebuild if needed
+   ./trigger-rebuild.sh
    ```
+
+**📊 For complete monitoring guide, see: [AMPLIFY_MONITORING.md](AMPLIFY_MONITORING.md)**
+
+**If no build starts after 5 minutes:**
+- Your AWS credentials may have expired - run `aws configure`
+- Manually trigger: See [AMPLIFY_MONITORING.md](AMPLIFY_MONITORING.md#step-4-manually-trigger-a-rebuild)
 
 ### When You Need More Than Just a Push
 
