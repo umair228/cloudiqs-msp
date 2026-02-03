@@ -13,6 +13,15 @@ This fork extends the AWS TEAM solution with **Managed Service Provider (MSP)** 
 
 👉 **[MSP Setup Guide](docs/MSP_SETUP_GUIDE.md)** - Complete guide for multi-customer configuration
 
+## 🚀 Redeployment & Updates
+
+Need to redeploy your latest changes? Check these guides:
+
+- **[Quick Deploy Guide](QUICK_DEPLOY.md)** - Fast reference for pushing updates to AWS
+- **[Redeployment Guide](REDEPLOYMENT_GUIDE.md)** - Comprehensive deployment procedures and troubleshooting
+
+**TL;DR**: To redeploy latest changes, run: `git push codecommit main`
+
 ## About TEAM
 
 TEAM is an open source solution that integrates with AWS IAM Identity Center and allows you to manage and monitor time-bound elevated access to your multi-account AWS environment at scale.
