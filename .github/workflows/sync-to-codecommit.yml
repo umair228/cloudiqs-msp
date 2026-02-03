@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:  # Allow manual trigger
 
+permissions:
+  contents: read  # Only needs to read repository contents
+
 jobs:
   sync-to-codecommit:
     name: Push to CodeCommit to trigger Amplify
@@ -40,7 +43,7 @@ jobs:
       - name: Push to CodeCommit
         run: |
           echo "🚀 Pushing to CodeCommit to trigger Amplify build..."
-          git push codecommit main --force
+          git push codecommit main --force-with-lease
           echo "✅ Successfully pushed to CodeCommit!"
           echo "📊 Amplify will now automatically build and deploy"
       
