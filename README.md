@@ -13,17 +13,46 @@ This fork extends the AWS TEAM solution with **Managed Service Provider (MSP)** 
 
 👉 **[MSP Setup Guide](docs/MSP_SETUP_GUIDE.md)** - Complete guide for multi-customer configuration
 
-## 🚀 Redeployment & Updates
+## 🚀 Deployment & Sync Workflows
 
-Need to redeploy your latest changes? Check these guides:
+### Quick Deployment
 
+**TL;DR**: To deploy latest changes, run: `git push codecommit main`
+
+### Documentation Guides
+
+- **[GitHub ↔ CodeCommit Sync Guide](GITHUB_CODECOMMIT_SYNC.md)** - Understand the dual-repo workflow and sync methods
+- **[GitHub Actions Setup](GITHUB_ACTIONS_SETUP.md)** - Automatic sync from GitHub to CodeCommit
 - **[Quick Deploy Guide](QUICK_DEPLOY.md)** - Fast reference for pushing updates to AWS
-- **[Redeployment Guide](REDEPLOYMENT_GUIDE.md)** - Comprehensive deployment procedures and troubleshooting
+- **[Redeployment Guide](REDEPLOYMENT_GUIDE.md)** - Comprehensive deployment procedures
 - **[AWS CodeCommit Authentication](AWS_CODECOMMIT_AUTH.md)** - Fix 403 errors and credential issues
 
-**TL;DR**: To redeploy latest changes, run: `git push codecommit main`
+### Automatic Deployment (Recommended)
+
+Set up GitHub Actions to automatically sync GitHub → CodeCommit → Amplify:
+
+1. **Configure AWS credentials in GitHub Secrets** (one-time setup)
+2. **Push to GitHub main branch** - that's it!
+3. **GitHub Actions automatically**:
+   - Pushes to CodeCommit
+   - Triggers Amplify build
+   - Deploys your application
+
+See [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md) for complete setup instructions.
+
+### Manual Deployment
+
+```bash
+# Push to GitHub (version control)
+git push origin main
+
+# Push to CodeCommit (triggers Amplify deployment)
+git push codecommit main
+```
 
 **Getting 403 errors?** See [AWS_CODECOMMIT_AUTH.md](AWS_CODECOMMIT_AUTH.md) for authentication setup.
+
+**Confused about the workflow?** See [GITHUB_CODECOMMIT_SYNC.md](GITHUB_CODECOMMIT_SYNC.md) for detailed explanation.
 
 ## About TEAM
 

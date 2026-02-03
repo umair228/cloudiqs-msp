@@ -1,0 +1,65 @@
+name: Sync to AWS CodeCommit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync-to-codecommit:
+    name: Push to CodeCommit to trigger Amplify
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Get full history for proper sync
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Install git-remote-codecommit
+        run: |
+          pip3 install git-remote-codecommit
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+      
+      - name: Add CodeCommit remote
+        run: |
+          git remote add codecommit codecommit::${{ secrets.AWS_REGION }}://${{ secrets.CODECOMMIT_REPO_NAME }}
+      
+      - name: Push to CodeCommit
+        run: |
+          echo "🚀 Pushing to CodeCommit to trigger Amplify build..."
+          git push codecommit main --force
+          echo "✅ Successfully pushed to CodeCommit!"
+          echo "📊 Amplify will now automatically build and deploy"
+      
+      - name: Get CodeCommit repository info
+        run: |
+          echo "📍 CodeCommit Repository Status:"
+          aws codecommit get-repository --repository-name ${{ secrets.CODECOMMIT_REPO_NAME }} --region ${{ secrets.AWS_REGION }} --query 'repositoryMetadata.[repositoryName,lastModifiedDate]' --output table
+      
+      - name: Deployment info
+        run: |
+          echo "════════════════════════════════════════════════════════"
+          echo "  ✅ GitHub → CodeCommit sync completed!"
+          echo "════════════════════════════════════════════════════════"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Go to AWS Amplify Console"
+          echo "  2. Select 'TEAM-IDC-APP'"
+          echo "  3. Click 'main' branch"
+          echo "  4. Monitor the build progress (takes 8-15 minutes)"
+          echo ""
+          echo "Your application will be live after the build completes!"
+          echo "════════════════════════════════════════════════════════"
