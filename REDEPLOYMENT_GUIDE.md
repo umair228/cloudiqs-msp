@@ -20,14 +20,20 @@ You have:
 
 Before redeploying, ensure you have:
 
-1. ✅ AWS CLI configured with appropriate credentials
-2. ✅ Git configured to access CodeCommit (git-remote-codecommit helper)
-3. ✅ Amplify CLI installed (if making schema changes): `npm install -g @aws-amplify/cli`
-4. ✅ Appropriate AWS permissions for:
+1. ✅ **AWS CLI configured with appropriate credentials**
+   - Run: `aws configure` to set up credentials
+   - Or see: [AWS_CODECOMMIT_AUTH.md](AWS_CODECOMMIT_AUTH.md) for detailed setup
+2. ✅ **Git configured to access CodeCommit (git-remote-codecommit helper)**
+   - Install: `pip3 install git-remote-codecommit`
+   - Update remote: `git remote add codecommit codecommit::us-east-1://team-idc-app`
+3. ✅ **Amplify CLI installed** (if making schema changes): `npm install -g @aws-amplify/cli`
+4. ✅ **Appropriate AWS permissions** for:
    - CodeCommit repository access
    - CloudFormation stack updates
    - Amplify console access
    - DynamoDB, AppSync, Lambda (via CloudFormation)
+
+> ⚠️ **Getting 403 errors when pushing?** See the comprehensive authentication guide: [AWS_CODECOMMIT_AUTH.md](AWS_CODECOMMIT_AUTH.md)
 
 ## Redeployment Options
 
@@ -328,23 +334,45 @@ aws amplify get-branch --app-id <app-id> --branch-name main --region us-east-1
 
 ### Issue: CodeCommit Push Fails
 
-**Symptoms**: Cannot push to codecommit remote.
+**Symptoms**: Cannot push to codecommit remote. Common errors:
+- `fatal: unable to access '...': The requested URL returned error: 403`
+- `fatal: could not read Username for '...': terminal prompts disabled`
+- `Authentication failed`
 
-**Fix:**
+**Cause**: AWS credentials not configured, git-remote-codecommit not installed, or incorrect remote URL.
+
+**Quick Fix:**
 ```bash
-# Check git-remote-codecommit is installed
+# 1. Install git-remote-codecommit
 pip3 install git-remote-codecommit
 
-# Check AWS credentials
-aws sts get-caller-identity
+# 2. Configure AWS credentials
+aws configure
+# Enter Access Key, Secret Key, region (us-east-1)
 
-# Verify CodeCommit permissions
-aws codecommit get-repository --repository-name team-idc-app --region us-east-1
-
-# Re-add remote if needed
+# 3. Update git remote to use codecommit:// protocol
 git remote remove codecommit
 git remote add codecommit codecommit::us-east-1://team-idc-app
+
+# 4. Verify credentials
+aws sts get-caller-identity
+
+# 5. Verify CodeCommit permissions
+aws codecommit get-repository --repository-name team-idc-app --region us-east-1
+
+# 6. Try pushing again
+git push codecommit main
 ```
+
+**📖 For comprehensive authentication troubleshooting, see: [AWS_CODECOMMIT_AUTH.md](AWS_CODECOMMIT_AUTH.md)**
+
+This guide covers:
+- Detailed credential setup
+- Multiple authentication methods (IAM, SSO, SSH)
+- Region configuration issues
+- Permission requirements
+- Expired credential handling
+- Step-by-step verification
 
 ---
 

@@ -158,20 +158,34 @@ cd deployment
 
 ## Troubleshooting Quick Fixes
 
-### Problem: "git push codecommit main" fails
+### Problem: "git push codecommit main" fails with 403 error
 
+**Most Common Cause**: AWS credentials not configured or git-remote-codecommit not installed.
+
+**Quick Fix**:
 ```bash
-# Check AWS credentials
-aws sts get-caller-identity
+# 1. Install git-remote-codecommit
+pip3 install git-remote-codecommit
 
-# Check CodeCommit access
-aws codecommit get-repository --repository-name team-idc-app --region us-east-1
+# 2. Configure AWS credentials
+aws configure
+# Enter your Access Key, Secret Key, region (us-east-1)
 
-# Re-add remote if needed
+# 3. Update git remote to use codecommit:// protocol
 git remote remove codecommit
 git remote add codecommit codecommit::us-east-1://team-idc-app
+
+# 4. Verify credentials
+aws sts get-caller-identity
+
+# 5. Test CodeCommit access
+aws codecommit get-repository --repository-name team-idc-app --region us-east-1
+
+# 6. Try pushing again
 git push codecommit main
 ```
+
+**📖 For detailed authentication help, see: [AWS_CODECOMMIT_AUTH.md](AWS_CODECOMMIT_AUTH.md)**
 
 ### Problem: Build fails in Amplify
 

@@ -19,8 +19,11 @@ Need to redeploy your latest changes? Check these guides:
 
 - **[Quick Deploy Guide](QUICK_DEPLOY.md)** - Fast reference for pushing updates to AWS
 - **[Redeployment Guide](REDEPLOYMENT_GUIDE.md)** - Comprehensive deployment procedures and troubleshooting
+- **[AWS CodeCommit Authentication](AWS_CODECOMMIT_AUTH.md)** - Fix 403 errors and credential issues
 
 **TL;DR**: To redeploy latest changes, run: `git push codecommit main`
+
+**Getting 403 errors?** See [AWS_CODECOMMIT_AUTH.md](AWS_CODECOMMIT_AUTH.md) for authentication setup.
 
 ## About TEAM
 
