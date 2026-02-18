@@ -15,7 +15,7 @@ REGION="${AWS_REGION:-us-east-1}"
 # Auto-detect API ID from Amplify metadata
 AMPLIFY_META="amplify/backend/amplify-meta.json"
 if [ -f "$AMPLIFY_META" ]; then
-  API_ID=$(cat "$AMPLIFY_META" | python3 -c "import sys,json; meta=json.load(sys.stdin); apis=meta.get('api',{}); print(list(apis.values())[0]['output']['GraphQLAPIIdOutput'])" 2>/dev/null || echo "")
+  API_ID=$(cat "$AMPLIFY_META" | python3 -c "import sys,json; meta=json.load(sys.stdin); apis=meta.get('api',{}); vals=list(apis.values()); print(vals[0]['output']['GraphQLAPIIdOutput'] if vals else '')" 2>/dev/null || echo "")
 fi
 
 # Fallback: try to find it via AWS CLI
