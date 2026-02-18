@@ -21,12 +21,12 @@ import {
   Input,
   Spinner,
   Textarea,
-  StatusIndicator
+  StatusIndicator,
+  TokenGroup
 } from "@awsui/components-react";
 import { useCollection } from "@awsui/collection-hooks";
 import { API, graphqlOperation } from "aws-amplify";
 import {
-  fetchAccounts,
   fetchIdCGroups
 } from "../Shared/RequestService";
 import RoleStatusIndicator from "./RoleStatusIndicator";
@@ -142,15 +142,21 @@ function Customers(props) {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminName, setAdminName] = useState("");
   const [status, setStatus] = useState({ label: "Active", value: "active" });
-  const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [selectedApproverGroups, setSelectedApproverGroups] = useState([]);
   const [permissionSet, setPermissionSet] = useState({ label: "Read-Only", value: "read-only" });
   
+  // Free-text AWS Account IDs (decoupled from Organization)
+  const [accountIdInput, setAccountIdInput] = useState("");
+  const [accountIdTokens, setAccountIdTokens] = useState([]);
+  const [accountIdError, setAccountIdError] = useState("");
+  
   // Data sources
-  const [accounts, setAccounts] = useState([]);
   const [approverGroups, setApproverGroups] = useState([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
   const [groupsLoading, setGroupsLoading] = useState(false);
+  
+  // Action states
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
   
   // Form validation
   const [nameError, setNameError] = useState("");
@@ -211,24 +217,6 @@ function Customers(props) {
     }
   };
 
-  const loadAccounts = async () => {
-    setAccountsLoading(true);
-    try {
-      const accountData = await fetchAccounts();
-      setAccounts(
-        accountData.map((acc) => ({
-          label: `${acc.name} (${acc.id})`,
-          value: acc.id,
-          description: acc.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Error loading accounts:", error);
-    } finally {
-      setAccountsLoading(false);
-    }
-  };
-
   const loadApproverGroups = async () => {
     setGroupsLoading(true);
     try {
@@ -249,7 +237,6 @@ function Customers(props) {
 
   const openAddModal = () => {
     resetForm();
-    loadAccounts();
     loadApproverGroups();
     setAddModalVisible(true);
   };
@@ -265,17 +252,17 @@ function Customers(props) {
         label: customer.status === 'active' ? 'Active' : 'Inactive',
         value: customer.status || 'active'
       });
-      
-      // Load accounts and set selected
-      loadAccounts().then(() => {
-        if (customer.accountIds) {
-          const selected = customer.accountIds.map(id => {
-            const account = accounts.find(acc => acc.value === id);
-            return account || { label: id, value: id };
-          });
-          setSelectedAccounts(selected);
-        }
+      setPermissionSet({
+        label: customer.permissionSet === 'admin' ? 'Admin' : customer.permissionSet === 'custom' ? 'Custom' : 'Read-Only',
+        value: customer.permissionSet || 'read-only'
       });
+      
+      // Populate account ID tokens from existing accountIds
+      if (customer.accountIds && customer.accountIds.length > 0) {
+        setAccountIdTokens(
+          customer.accountIds.map(id => ({ label: id, dismissLabel: `Remove ${id}` }))
+        );
+      }
       
       // Load groups and set selected
       loadApproverGroups().then(() => {
@@ -299,10 +286,155 @@ function Customers(props) {
     setAdminName("");
     setStatus({ label: "Active", value: "active" });
     setPermissionSet({ label: "Read-Only", value: "read-only" });
-    setSelectedAccounts([]);
+    setAccountIdInput("");
+    setAccountIdTokens([]);
+    setAccountIdError("");
     setSelectedApproverGroups([]);
     setNameError("");
     setEmailError("");
+  };
+
+  const validateAccountId = (id) => {
+    const cleaned = id.trim();
+    if (!cleaned) return null;
+    if (!/^\d{12}$/.test(cleaned)) {
+      return "AWS Account ID must be exactly 12 digits";
+    }
+    if (accountIdTokens.some(t => t.label === cleaned)) {
+      return "This Account ID has already been added";
+    }
+    return null;
+  };
+
+  const addAccountId = () => {
+    const cleaned = accountIdInput.trim();
+    const error = validateAccountId(cleaned);
+    if (error) {
+      setAccountIdError(error);
+      return;
+    }
+    setAccountIdTokens([...accountIdTokens, { label: cleaned, dismissLabel: `Remove ${cleaned}` }]);
+    setAccountIdInput("");
+    setAccountIdError("");
+  };
+
+  const handleVerifyRole = async () => {
+    if (selectedCustomer.length !== 1) return;
+    const customer = selectedCustomer[0];
+    
+    if (!customer.accountIds || customer.accountIds.length === 0 || !customer.externalId) {
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'error',
+          content: 'Customer must have account IDs and an external ID before verification.',
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+      return;
+    }
+    
+    setVerifying(true);
+    try {
+      const roleArn = `arn:aws:iam::${customer.accountIds[0]}:role/CloudIQS-MSP-AccessRole`;
+      
+      const updateInput = {
+        id: customer.id,
+        roleArn: roleArn,
+        roleStatus: 'verifying'
+      };
+      
+      await API.graphql(
+        graphqlOperation(mutations.updateCustomers, { input: updateInput })
+      );
+      
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'info',
+          content: `Role verification initiated for ${customer.name}. The system will verify the role via AssumeRole.`,
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+      
+      fetchCustomers();
+    } catch (error) {
+      console.error("Error verifying role:", error);
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'error',
+          content: `Error initiating role verification: ${error.message || 'Unknown error'}`,
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResendInvitation = async () => {
+    if (selectedCustomer.length !== 1) return;
+    const customer = selectedCustomer[0];
+    
+    if (!customer.adminEmail) {
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'error',
+          content: 'Customer must have an admin email to resend the invitation.',
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+      return;
+    }
+    
+    setResending(true);
+    try {
+      // Generate a new invitation token
+      const invitationToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      const updateInput = {
+        id: customer.id,
+        invitationToken: invitationToken,
+        roleStatus: 'pending_approval'
+      };
+      
+      await API.graphql(
+        graphqlOperation(mutations.updateCustomers, { input: updateInput })
+      );
+      
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'success',
+          content: `Invitation resent to ${customer.adminEmail} for ${customer.name}.`,
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+      
+      fetchCustomers();
+    } catch (error) {
+      console.error("Error resending invitation:", error);
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'error',
+          content: `Error resending invitation: ${error.message || 'Unknown error'}`,
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+    } finally {
+      setResending(false);
+    }
   };
 
   const validateForm = () => {
@@ -347,7 +479,7 @@ function Customers(props) {
         adminEmail: adminEmail,
         adminName: adminName,
         status: status.value,
-        accountIds: selectedAccounts.map(acc => acc.value),
+        accountIds: accountIdTokens.map(t => t.label),
         approverGroupIds: selectedApproverGroups.map(grp => grp.value),
         modifiedBy: props.user || "system",
         // Role-based onboarding fields
@@ -430,7 +562,7 @@ function Customers(props) {
         adminEmail: adminEmail,
         adminName: adminName,
         status: status.value,
-        accountIds: selectedAccounts.map(acc => acc.value),
+        accountIds: accountIdTokens.map(t => t.label),
         approverGroupIds: selectedApproverGroups.map(grp => grp.value),
         modifiedBy: props.user || "system"
       };
@@ -525,6 +657,20 @@ function Customers(props) {
                   iconName="refresh"
                   ariaLabel="Refresh"
                 />
+                <Button
+                  disabled={selectedCustomer.length !== 1 || !selectedCustomer[0]?.adminEmail}
+                  onClick={handleResendInvitation}
+                  loading={resending}
+                >
+                  Resend invitation
+                </Button>
+                <Button
+                  disabled={selectedCustomer.length !== 1 || !['approved', 'verification_failed'].includes(selectedCustomer[0]?.roleStatus)}
+                  onClick={handleVerifyRole}
+                  loading={verifying}
+                >
+                  Verify role
+                </Button>
                 <Button
                   disabled={selectedCustomer.length !== 1}
                   onClick={openEditModal}
@@ -667,23 +813,40 @@ function Customers(props) {
             </FormField>
 
             <FormField
-              label="AWS Accounts"
+              label="Customer AWS Account IDs"
               stretch
-              description="Select the AWS accounts that belong to this customer."
+              description="Manually enter the customer's AWS Account IDs. These are the external accounts the customer owns — not from your Organization."
+              errorText={accountIdError}
             >
-              {accountsLoading ? (
-                <Spinner />
-              ) : (
-                <Multiselect
-                  selectedOptions={selectedAccounts}
-                  onChange={({ detail }) =>
-                    setSelectedAccounts(detail.selectedOptions)
-                  }
-                  options={accounts}
-                  placeholder="Choose AWS accounts"
-                  filteringType="auto"
-                />
-              )}
+              <SpaceBetween size="xs">
+                <SpaceBetween direction="horizontal" size="xs">
+                  <Input
+                    value={accountIdInput}
+                    onChange={({ detail }) => {
+                      setAccountIdInput(detail.value);
+                      setAccountIdError("");
+                    }}
+                    onKeyDown={({ detail }) => {
+                      if (detail.key === 'Enter') {
+                        addAccountId();
+                      }
+                    }}
+                    placeholder="e.g., 111122223333"
+                    type="text"
+                  />
+                  <Button onClick={addAccountId} iconName="add-plus">Add</Button>
+                </SpaceBetween>
+                {accountIdTokens.length > 0 && (
+                  <TokenGroup
+                    items={accountIdTokens}
+                    onDismiss={({ detail: { itemIndex } }) => {
+                      setAccountIdTokens(
+                        accountIdTokens.filter((_, i) => i !== itemIndex)
+                      );
+                    }}
+                  />
+                )}
+              </SpaceBetween>
             </FormField>
 
             <FormField
@@ -821,23 +984,40 @@ function Customers(props) {
             </FormField>
 
             <FormField
-              label="AWS Accounts"
+              label="Customer AWS Account IDs"
               stretch
-              description="Select the AWS accounts that belong to this customer."
+              description="Manually enter the customer's AWS Account IDs. These are the external accounts the customer owns — not from your Organization."
+              errorText={accountIdError}
             >
-              {accountsLoading ? (
-                <Spinner />
-              ) : (
-                <Multiselect
-                  selectedOptions={selectedAccounts}
-                  onChange={({ detail }) =>
-                    setSelectedAccounts(detail.selectedOptions)
-                  }
-                  options={accounts}
-                  placeholder="Choose AWS accounts"
-                  filteringType="auto"
-                />
-              )}
+              <SpaceBetween size="xs">
+                <SpaceBetween direction="horizontal" size="xs">
+                  <Input
+                    value={accountIdInput}
+                    onChange={({ detail }) => {
+                      setAccountIdInput(detail.value);
+                      setAccountIdError("");
+                    }}
+                    onKeyDown={({ detail }) => {
+                      if (detail.key === 'Enter') {
+                        addAccountId();
+                      }
+                    }}
+                    placeholder="e.g., 111122223333"
+                    type="text"
+                  />
+                  <Button onClick={addAccountId} iconName="add-plus">Add</Button>
+                </SpaceBetween>
+                {accountIdTokens.length > 0 && (
+                  <TokenGroup
+                    items={accountIdTokens}
+                    onDismiss={({ detail: { itemIndex } }) => {
+                      setAccountIdTokens(
+                        accountIdTokens.filter((_, i) => i !== itemIndex)
+                      );
+                    }}
+                  />
+                )}
+              </SpaceBetween>
             </FormField>
 
             <FormField

@@ -475,6 +475,18 @@ export const createCustomers = /* GraphQL */ `
       createdAt
       modifiedBy
       metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
       __typename
     }
   }
@@ -497,6 +509,18 @@ export const updateCustomers = /* GraphQL */ `
       createdAt
       modifiedBy
       metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
       __typename
     }
   }
@@ -519,6 +543,9 @@ export const deleteCustomers = /* GraphQL */ `
       createdAt
       modifiedBy
       metadata
+      permissionSet
+      roleStatus
+      externalId
       __typename
     }
   }

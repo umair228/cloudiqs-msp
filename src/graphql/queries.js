@@ -583,6 +583,18 @@ export const getCustomers = /* GraphQL */ `
       createdAt
       modifiedBy
       metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
       __typename
     }
   }
@@ -607,6 +619,17 @@ export const listCustomers = /* GraphQL */ `
         createdAt
         modifiedBy
         metadata
+        permissionSet
+        roleStatus
+        roleArn
+        externalId
+        invitationToken
+        invitationSentAt
+        invitationExpiresAt
+        approvedAt
+        roleEstablishedAt
+        lastRoleVerification
+        roleVerificationError
         __typename
       }
       nextToken
