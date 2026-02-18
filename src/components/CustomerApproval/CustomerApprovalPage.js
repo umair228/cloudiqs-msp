@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Heading,
@@ -32,10 +32,10 @@ const CustomerApprovalPage = () => {
   const [rejected, setRejected] = useState(false);
 
   // Extract token from URL query parameters
-  const getInvitationToken = useCallback(() => {
+  const getInvitationToken = () => {
     const params = new URLSearchParams(location.search);
     return params.get('token');
-  }, [location.search]);
+  };
 
   useEffect(() => {
     const loadInvitationDetails = async () => {
@@ -82,7 +82,7 @@ const CustomerApprovalPage = () => {
     };
 
     loadInvitationDetails();
-  }, [getInvitationToken]);
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleApprove = async () => {
     const token = getInvitationToken();
