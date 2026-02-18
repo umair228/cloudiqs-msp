@@ -35,6 +35,8 @@ import "../../index.css";
 import * as mutations from "../../graphql/mutations";
 import * as queries from "../../graphql/queries";
 
+const MSP_ROLE_NAME = 'CloudIQS-MSP-AccessRole';
+
 const COLUMN_DEFINITIONS = [
   {
     id: "id",
@@ -163,6 +165,7 @@ function Customers(props) {
   const [roleArnError, setRoleArnError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState(null);
+  const [resending, setResending] = useState(false);
 
   const [preferences, setPreferences] = useState({
     pageSize: 30,
@@ -520,7 +523,7 @@ function Customers(props) {
       return;
     }
     
-    setLoading(true);
+    setResending(true);
     try {
       await API.graphql(
         graphqlOperation(queries.sendCustomerInvitation, {
@@ -555,7 +558,7 @@ function Customers(props) {
         }]);
       }
     } finally {
-      setLoading(false);
+      setResending(false);
     }
   };
 
@@ -567,7 +570,7 @@ function Customers(props) {
     if (customer.roleArn) {
       setRoleArnInput(customer.roleArn);
     } else if (customer.accountIds && customer.accountIds.length > 0) {
-      setRoleArnInput(`arn:aws:iam::${customer.accountIds[0]}:role/CloudIQS-MSP-AccessRole`);
+      setRoleArnInput(`arn:aws:iam::${customer.accountIds[0]}:role/${MSP_ROLE_NAME}`);
     } else {
       setRoleArnInput("");
     }
@@ -681,6 +684,7 @@ function Customers(props) {
                 <Button
                   disabled={selectedCustomer.length !== 1 || !selectedCustomer[0]?.adminEmail}
                   onClick={handleResendInvitation}
+                  loading={resending}
                 >
                   Resend invitation
                 </Button>
@@ -1145,7 +1149,7 @@ function Customers(props) {
             label="Role ARN"
             errorText={roleArnError}
             stretch
-            constraintText="The ARN of the IAM role created in the customer's account. Format: arn:aws:iam::<account-id>:role/CloudIQS-MSP-AccessRole"
+            constraintText={`The ARN of the IAM role created in the customer's account. Format: arn:aws:iam::<account-id>:role/${MSP_ROLE_NAME}`}
           >
             <Input
               value={roleArnInput}
@@ -1153,7 +1157,7 @@ function Customers(props) {
                 setRoleArnInput(detail.value);
                 setRoleArnError("");
               }}
-              placeholder="arn:aws:iam::111122223333:role/CloudIQS-MSP-AccessRole"
+              placeholder={`arn:aws:iam::111122223333:role/${MSP_ROLE_NAME}`}
             />
           </FormField>
           
