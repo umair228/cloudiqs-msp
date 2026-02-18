@@ -208,6 +208,20 @@ type Customers
   createdAt: AWSDateTime
   modifiedBy: String
   metadata: AWSJSON
+  
+  # Role-Based Onboarding Fields
+  permissionSet: String
+  roleStatus: String
+  roleArn: String
+  externalId: String
+  cloudFormationTemplate: String
+  invitationToken: String @index(name: "byInvitationToken")
+  invitationSentAt: AWSDateTime
+  invitationExpiresAt: AWSDateTime
+  approvedAt: AWSDateTime
+  roleEstablishedAt: AWSDateTime
+  lastRoleVerification: AWSDateTime
+  roleVerificationError: String
 }
 type data @aws_iam @aws_cognito_user_pools {
   name: String

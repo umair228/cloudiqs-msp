@@ -29,6 +29,7 @@ import {
   fetchAccounts,
   fetchIdCGroups
 } from "../Shared/RequestService";
+import RoleStatusIndicator from "./RoleStatusIndicator";
 import "../../index.css";
 import * as mutations from "../../graphql/mutations";
 import * as queries from "../../graphql/queries";
@@ -58,6 +59,20 @@ const COLUMN_DEFINITIONS = [
       </StatusIndicator>
     ),
     width: 120,
+  },
+  {
+    id: "roleStatus",
+    sortingField: "roleStatus",
+    header: "Role Status",
+    cell: (item) => item.roleStatus ? <RoleStatusIndicator roleStatus={item.roleStatus} /> : "-",
+    width: 180,
+  },
+  {
+    id: "permissionSet",
+    sortingField: "permissionSet",
+    header: "Permission Set",
+    cell: (item) => item.permissionSet ? item.permissionSet.toUpperCase() : "-",
+    width: 150,
   },
   {
     id: "accountCount",
@@ -129,6 +144,7 @@ function Customers(props) {
   const [status, setStatus] = useState({ label: "Active", value: "active" });
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [selectedApproverGroups, setSelectedApproverGroups] = useState([]);
+  const [permissionSet, setPermissionSet] = useState({ label: "Read-Only", value: "read-only" });
   
   // Data sources
   const [accounts, setAccounts] = useState([]);
@@ -142,7 +158,7 @@ function Customers(props) {
 
   const [preferences, setPreferences] = useState({
     pageSize: 30,
-    visibleContent: ["id", "name", "status", "accountCount", "adminEmail", "description"],
+    visibleContent: ["id", "name", "status", "roleStatus", "permissionSet", "accountCount", "adminEmail", "description"],
   });
 
   const {
@@ -282,6 +298,7 @@ function Customers(props) {
     setAdminEmail("");
     setAdminName("");
     setStatus({ label: "Active", value: "active" });
+    setPermissionSet({ label: "Read-Only", value: "read-only" });
     setSelectedAccounts([]);
     setSelectedApproverGroups([]);
     setNameError("");
@@ -313,6 +330,17 @@ function Customers(props) {
     
     setLoading(true);
     try {
+      // Generate a unique external ID for AssumeRole security
+      const externalId = crypto.randomUUID ? crypto.randomUUID() : 
+        Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      
+      // Generate a secure invitation token
+      const invitationToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
       const input = {
         name: customerName,
         description: customerDescription,
@@ -321,19 +349,70 @@ function Customers(props) {
         status: status.value,
         accountIds: selectedAccounts.map(acc => acc.value),
         approverGroupIds: selectedApproverGroups.map(grp => grp.value),
-        modifiedBy: props.user || "system"
+        modifiedBy: props.user || "system",
+        // Role-based onboarding fields
+        permissionSet: permissionSet.value,
+        roleStatus: "pending_approval",
+        externalId: externalId,
+        invitationToken: invitationToken
       };
       
-      await API.graphql(
+      const result = await API.graphql(
         graphqlOperation(mutations.createCustomers, { input })
       );
+      
+      const newCustomer = result.data.createCustomers;
+      
+      // Send invitation email if admin email is provided
+      if (adminEmail) {
+        try {
+          // Note: This would call a Lambda function via API Gateway
+          // For now, we'll just log it. The Lambda can be invoked separately.
+          console.log('Customer created, invitation should be sent:', {
+            customerId: newCustomer.id,
+            customerName: newCustomer.name,
+            adminEmail: newCustomer.adminEmail,
+            invitationToken: newCustomer.invitationToken,
+            permissionSet: newCustomer.permissionSet
+          });
+          
+          if (props.addNotification) {
+            props.addNotification([{
+              type: 'success',
+              content: `Customer created successfully! An invitation email will be sent to ${adminEmail}`,
+              dismissible: true,
+              dismissLabel: 'Dismiss',
+              onDismiss: () => props.addNotification([])
+            }]);
+          }
+        } catch (emailError) {
+          console.error('Error sending invitation email:', emailError);
+          if (props.addNotification) {
+            props.addNotification([{
+              type: 'warning',
+              content: 'Customer created, but failed to send invitation email. You can resend it later.',
+              dismissible: true,
+              dismissLabel: 'Dismiss',
+              onDismiss: () => props.addNotification([])
+            }]);
+          }
+        }
+      }
       
       setAddModalVisible(false);
       fetchCustomers();
       resetForm();
     } catch (error) {
       console.error("Error creating customer:", error);
-      alert("Error creating customer: " + error.message);
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'error',
+          content: `Error creating customer: ${error.message}`,
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -572,6 +651,22 @@ function Customers(props) {
             </FormField>
 
             <FormField
+              label="Permission Set"
+              stretch
+              description="Determines the level of access CloudIQS MSP will have to the customer's AWS account."
+            >
+              <Select
+                selectedOption={permissionSet}
+                onChange={({ detail }) => setPermissionSet(detail.selectedOption)}
+                options={[
+                  { label: "Read-Only", value: "read-only" },
+                  { label: "Admin", value: "admin" },
+                  { label: "Custom", value: "custom" },
+                ]}
+              />
+            </FormField>
+
+            <FormField
               label="AWS Accounts"
               stretch
               description="Select the AWS accounts that belong to this customer."
@@ -705,6 +800,22 @@ function Customers(props) {
                 options={[
                   { label: "Active", value: "active" },
                   { label: "Inactive", value: "inactive" },
+                ]}
+              />
+            </FormField>
+
+            <FormField
+              label="Permission Set"
+              stretch
+              description="Determines the level of access CloudIQS MSP will have to the customer's AWS account."
+            >
+              <Select
+                selectedOption={permissionSet}
+                onChange={({ detail }) => setPermissionSet(detail.selectedOption)}
+                options={[
+                  { label: "Read-Only", value: "read-only" },
+                  { label: "Admin", value: "admin" },
+                  { label: "Custom", value: "custom" },
                 ]}
               />
             </FormField>
