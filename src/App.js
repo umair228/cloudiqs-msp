@@ -5,9 +5,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Amplify, Auth, Hub } from "aws-amplify";
 import { Spin, Layout } from "antd";
+import { BrowserRouter, Switch, Route } from "react-router-dom";
 import awsconfig from "./aws-exports";
 import Nav from "./components/Navigation/Nav";
 import SignInIdp from "./components/Navigation/SignInIdp";
+import CustomerApprovalPage from "./components/CustomerApproval/CustomerApprovalPage";
 import logo from "./media/logo-transparent.png";
 import "./index.css";
 import "./signin-page.css";
@@ -102,24 +104,31 @@ function App() {
   }, [setData]);
 
   return (
-    <div>
-      {groups ? (
-        <Nav
-          user={user}
-          groupIds={groupIds}
-          userId={userId}
-          groups={groups}
-          cognitoGroups={cognitoGroups}
-        />
-      ) : showIdpStep ? (
-        <SignInIdp
-          loading={loading}
-          onBack={() => setShowIdpStep(false)}
-        />
-      ) : (
-        <Home loading={loading} onGoToIdp={() => setShowIdpStep(true)} />
-      )}
-    </div>
+    <BrowserRouter>
+      <Switch>
+        <Route path="/customer-approval" exact component={CustomerApprovalPage} />
+        <Route path="*">
+          <div>
+            {groups ? (
+              <Nav
+                user={user}
+                groupIds={groupIds}
+                userId={userId}
+                groups={groups}
+                cognitoGroups={cognitoGroups}
+              />
+            ) : showIdpStep ? (
+              <SignInIdp
+                loading={loading}
+                onBack={() => setShowIdpStep(false)}
+              />
+            ) : (
+              <Home loading={loading} onGoToIdp={() => setShowIdpStep(true)} />
+            )}
+          </div>
+        </Route>
+      </Switch>
+    </BrowserRouter>
   );
 }
 
