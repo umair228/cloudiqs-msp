@@ -34,6 +34,8 @@ import "../../index.css";
 import * as mutations from "../../graphql/mutations";
 import * as queries from "../../graphql/queries";
 
+const MSP_ROLE_NAME = 'CloudIQS-MSP-AccessRole';
+
 const COLUMN_DEFINITIONS = [
   {
     id: "id",
@@ -337,7 +339,10 @@ function Customers(props) {
     
     setVerifying(true);
     try {
-      const roleArn = `arn:aws:iam::${customer.accountIds[0]}:role/CloudIQS-MSP-AccessRole`;
+      // Build role ARN for the primary account; the teamVerifyCustomerRole Lambda
+      // will verify access for each account individually if needed
+      const primaryAccountId = customer.accountIds[0];
+      const roleArn = `arn:aws:iam::${primaryAccountId}:role/${MSP_ROLE_NAME}`;
       
       const updateInput = {
         id: customer.id,
@@ -396,7 +401,7 @@ function Customers(props) {
     setResending(true);
     try {
       // Generate a new invitation token
-      const invitationToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      const invitationToken = Array.from(window.crypto.getRandomValues(new Uint8Array(32)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
@@ -463,13 +468,13 @@ function Customers(props) {
     setLoading(true);
     try {
       // Generate a unique external ID for AssumeRole security
-      const externalId = crypto.randomUUID ? crypto.randomUUID() : 
-        Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      const externalId = window.crypto.randomUUID ? window.crypto.randomUUID() : 
+        Array.from(window.crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0'))
           .join('');
       
       // Generate a secure invitation token
-      const invitationToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      const invitationToken = Array.from(window.crypto.getRandomValues(new Uint8Array(32)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
