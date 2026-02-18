@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Heading,
@@ -8,12 +8,11 @@ import {
   Alert,
   Divider,
   Badge,
-  StepperField,
   Flex,
   View,
   Icon
 } from '@aws-amplify/ui-react';
-import { FaCheckCircle, FaTimesCircle, FaDownload, FaCloudUploadAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaDownload, FaExclamationTriangle } from 'react-icons/fa';
 import { useLocation } from 'react-router-dom';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
@@ -27,17 +26,16 @@ const CustomerApprovalPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [customer, setCustomer] = useState(null);
-  const [currentStep, setCurrentStep] = useState(0);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [approved, setApproved] = useState(false);
   const [rejected, setRejected] = useState(false);
 
   // Extract token from URL query parameters
-  const getInvitationToken = () => {
+  const getInvitationToken = useCallback(() => {
     const params = new URLSearchParams(location.search);
     return params.get('token');
-  };
+  }, [location.search]);
 
   useEffect(() => {
     const loadInvitationDetails = async () => {
@@ -68,12 +66,8 @@ const CustomerApprovalPage = () => {
 
         setCustomer(data);
         
-        // Set current step based on role status
-        if (data.roleStatus === 'established') {
-          setCurrentStep(3);
-          setApproved(true);
-        } else if (data.roleStatus === 'approved') {
-          setCurrentStep(2);
+        // Set approval/rejection status based on role status
+        if (data.roleStatus === 'established' || data.roleStatus === 'approved') {
           setApproved(true);
         } else if (data.roleStatus === 'rejected') {
           setRejected(true);
@@ -88,7 +82,7 @@ const CustomerApprovalPage = () => {
     };
 
     loadInvitationDetails();
-  }, [location]);
+  }, [getInvitationToken]);
 
   const handleApprove = async () => {
     const token = getInvitationToken();
@@ -114,7 +108,6 @@ const CustomerApprovalPage = () => {
 
       setCustomer({ ...customer, ...data, cloudFormationTemplate: data.cloudFormationTemplate });
       setApproved(true);
-      setCurrentStep(2);
       setApproving(false);
     } catch (err) {
       console.error('Error approving invitation:', err);

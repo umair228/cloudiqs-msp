@@ -461,7 +461,6 @@ function Request(props) {
                   
                   // Update customer info
                   if (selected.value) {
-                    const customerData = customers.find(c => c.id === selected.value);
                     setCustomerId(selected.value);
                     setCustomerName(selected.label);
                     filterAccountsByCustomer(selected.value);
