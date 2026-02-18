@@ -375,6 +375,25 @@ type Subscription {
     @aws_subscribe(mutations: ["publishPermissions"])
     @auth(rules: [{ allow: private }])
 }
+type CustomerInvitationResponse @aws_iam @aws_cognito_user_pools {
+  success: Boolean
+  customerId: String
+  messageId: String
+  sentAt: String
+  expiresAt: String
+  error: String
+}
+
+type CustomerRoleVerificationResponse @aws_iam @aws_cognito_user_pools {
+  success: Boolean
+  customerId: String
+  roleStatus: String
+  accountId: String
+  error: String
+  errorCode: String
+  verifiedAt: String
+}
+
 type Query {
   getAccounts: [Accounts]
     @function(name: "teamgetAccounts-${env}")
@@ -422,6 +441,23 @@ type Query {
     @auth(rules: [{ allow: private }])
   validateRequest: requests
     @function(name: "teamvalidateRequest-${env}")
+    @auth(rules: [{ allow: private }])
+  sendCustomerInvitation(
+    customerId: String!
+    customerName: String!
+    adminEmail: String!
+    adminName: String
+    invitationToken: String!
+    permissionSet: String
+  ): CustomerInvitationResponse
+    @function(name: "teamSendCustomerInvitation-${env}")
+    @auth(rules: [{ allow: private }])
+  verifyCustomerRole(
+    customerId: String!
+    roleArn: String!
+    externalId: String!
+  ): CustomerRoleVerificationResponse
+    @function(name: "teamVerifyCustomerRole-${env}")
     @auth(rules: [{ allow: private }])
 }
 

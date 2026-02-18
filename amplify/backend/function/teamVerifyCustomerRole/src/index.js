@@ -107,28 +107,32 @@ export const handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
   
   try {
-    const { customerId, roleArn, externalId } = event;
+    // Handle both AppSync @function and direct invocation
+    const args = event.arguments || event;
+    const { customerId, roleArn, externalId } = args;
     
     // Validate required fields
     if (!customerId || !roleArn || !externalId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ 
-          error: 'Missing required fields',
-          required: ['customerId', 'roleArn', 'externalId']
-        })
+      const errorResponse = { 
+        error: 'Missing required fields',
+        required: ['customerId', 'roleArn', 'externalId']
       };
+      if (event.arguments) {
+        return { success: false, error: errorResponse.error };
+      }
+      return { statusCode: 400, body: JSON.stringify(errorResponse) };
     }
     
     // Validate roleArn format
-    if (!roleArn.startsWith('arn:aws:iam::')) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ 
-          error: 'Invalid roleArn format',
-          expected: 'arn:aws:iam::ACCOUNT-ID:role/ROLE-NAME'
-        })
+    if (!roleArn.match(/^arn:aws:iam::\d{12}:role\/.+$/)) {
+      const errorResponse = { 
+        error: 'Invalid roleArn format',
+        expected: 'arn:aws:iam::ACCOUNT-ID:role/ROLE-NAME'
       };
+      if (event.arguments) {
+        return { success: false, error: errorResponse.error };
+      }
+      return { statusCode: 400, body: JSON.stringify(errorResponse) };
     }
     
     // Attempt to verify the role
@@ -141,6 +145,7 @@ export const handler = async (event) => {
       const updateInput = {
         id: customerId,
         roleStatus: 'established',
+        roleArn: roleArn,
         roleEstablishedAt: now,
         lastRoleVerification: now,
         roleVerificationError: null
@@ -150,16 +155,16 @@ export const handler = async (event) => {
       
       console.log(`Customer ${customerId} role verified successfully`);
       
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: true,
-          customerId,
-          roleStatus: 'established',
-          accountId: verificationResult.accountId,
-          verifiedAt: now
-        })
+      const result = {
+        success: true,
+        customerId,
+        roleStatus: 'established',
+        accountId: verificationResult.accountId,
+        verifiedAt: now
       };
+      
+      if (event.arguments) return result;
+      return { statusCode: 200, body: JSON.stringify(result) };
     } else {
       // Update customer with verification_failed status
       const updateInput = {
@@ -173,20 +178,25 @@ export const handler = async (event) => {
       
       console.log(`Customer ${customerId} role verification failed`);
       
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: false,
-          customerId,
-          roleStatus: 'verification_failed',
-          error: verificationResult.error,
-          errorCode: verificationResult.errorCode,
-          verifiedAt: now
-        })
+      const result = {
+        success: false,
+        customerId,
+        roleStatus: 'verification_failed',
+        error: verificationResult.error,
+        errorCode: verificationResult.errorCode,
+        verifiedAt: now
       };
+      
+      if (event.arguments) return result;
+      return { statusCode: 200, body: JSON.stringify(result) };
     }
   } catch (error) {
     console.error('Error in verification handler:', error);
+    
+    if (event.arguments) {
+      return { success: false, customerId: (event.arguments || event).customerId, error: error.message };
+    }
+    
     return {
       statusCode: 500,
       body: JSON.stringify({ 
