@@ -216,28 +216,31 @@ export const handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
   
   try {
-    const { customerId, customerName, adminEmail, adminName, invitationToken, permissionSet } = event;
+    // Handle both AppSync @function and direct invocation
+    const args = event.arguments || event;
+    const { customerId, customerName, adminEmail, adminName, invitationToken, permissionSet } = args;
     
     // Validate required fields
     if (!customerId || !customerName || !adminEmail || !invitationToken) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ 
-          error: 'Missing required fields',
-          required: ['customerId', 'customerName', 'adminEmail', 'invitationToken']
-        })
+      const errorResponse = { 
+        error: 'Missing required fields',
+        required: ['customerId', 'customerName', 'adminEmail', 'invitationToken']
       };
+      // For AppSync, return directly; for API Gateway, wrap in statusCode/body
+      if (event.arguments) {
+        return { success: false, error: errorResponse.error };
+      }
+      return { statusCode: 400, body: JSON.stringify(errorResponse) };
     }
     
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(adminEmail)) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ 
-          error: 'Invalid email address format'
-        })
-      };
+      const errorResponse = { error: 'Invalid email address format' };
+      if (event.arguments) {
+        return { success: false, error: errorResponse.error };
+      }
+      return { statusCode: 400, body: JSON.stringify(errorResponse) };
     }
     
     const approvalUrl = `${PORTAL_URL}/customer-approval?token=${invitationToken}`;
@@ -265,19 +268,31 @@ export const handler = async (event) => {
     
     await graphqlRequest(updateCustomerMutation, { input: updateInput });
     
+    const result = {
+      success: true,
+      customerId,
+      messageId: sesResponse.MessageId,
+      sentAt,
+      expiresAt
+    };
+    
+    // For AppSync @function invocation, return data directly
+    if (event.arguments) {
+      return result;
+    }
+    
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        success: true,
-        customerId,
-        messageId: sesResponse.MessageId,
-        sentAt,
-        expiresAt,
-        approvalUrl
-      })
+      body: JSON.stringify({ ...result, approvalUrl })
     };
   } catch (error) {
     console.error('Error sending invitation:', error);
+    
+    // For AppSync @function invocation, return error in response
+    if (event.arguments) {
+      return { success: false, customerId: (event.arguments || event).customerId, error: error.message };
+    }
+    
     return {
       statusCode: 500,
       body: JSON.stringify({ 

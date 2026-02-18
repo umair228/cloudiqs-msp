@@ -21,18 +21,21 @@ import {
   Input,
   Spinner,
   Textarea,
-  StatusIndicator
+  StatusIndicator,
+  Alert,
+  TokenGroup
 } from "@awsui/components-react";
 import { useCollection } from "@awsui/collection-hooks";
 import { API, graphqlOperation } from "aws-amplify";
 import {
-  fetchAccounts,
   fetchIdCGroups
 } from "../Shared/RequestService";
 import RoleStatusIndicator from "./RoleStatusIndicator";
 import "../../index.css";
 import * as mutations from "../../graphql/mutations";
 import * as queries from "../../graphql/queries";
+
+const MSP_ROLE_NAME = 'CloudIQS-MSP-AccessRole';
 
 const COLUMN_DEFINITIONS = [
   {
@@ -143,18 +146,26 @@ function Customers(props) {
   const [adminName, setAdminName] = useState("");
   const [status, setStatus] = useState({ label: "Active", value: "active" });
   const [selectedAccounts, setSelectedAccounts] = useState([]);
+  const [accountIdInput, setAccountIdInput] = useState("");
+  const [accountIdError, setAccountIdError] = useState("");
   const [selectedApproverGroups, setSelectedApproverGroups] = useState([]);
   const [permissionSet, setPermissionSet] = useState({ label: "Read-Only", value: "read-only" });
   
   // Data sources
-  const [accounts, setAccounts] = useState([]);
   const [approverGroups, setApproverGroups] = useState([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
   const [groupsLoading, setGroupsLoading] = useState(false);
   
   // Form validation
   const [nameError, setNameError] = useState("");
   const [emailError, setEmailError] = useState("");
+  
+  // Role verification
+  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
+  const [roleArnInput, setRoleArnInput] = useState("");
+  const [roleArnError, setRoleArnError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [resending, setResending] = useState(false);
 
   const [preferences, setPreferences] = useState({
     pageSize: 30,
@@ -211,22 +222,31 @@ function Customers(props) {
     }
   };
 
-  const loadAccounts = async () => {
-    setAccountsLoading(true);
-    try {
-      const accountData = await fetchAccounts();
-      setAccounts(
-        accountData.map((acc) => ({
-          label: `${acc.name} (${acc.id})`,
-          value: acc.id,
-          description: acc.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Error loading accounts:", error);
-    } finally {
-      setAccountsLoading(false);
+  const validateAccountId = (accountId) => {
+    const trimmed = accountId.trim();
+    if (!trimmed) return null;
+    if (!/^\d{12}$/.test(trimmed)) {
+      return "AWS Account ID must be exactly 12 digits";
     }
+    if (selectedAccounts.some(acc => acc.label === trimmed)) {
+      return "This account ID has already been added";
+    }
+    return null;
+  };
+
+  const addAccountId = () => {
+    const trimmed = accountIdInput.trim();
+    if (!trimmed) return;
+    
+    const error = validateAccountId(trimmed);
+    if (error) {
+      setAccountIdError(error);
+      return;
+    }
+    
+    setSelectedAccounts([...selectedAccounts, { label: trimmed, dismissLabel: `Remove ${trimmed}` }]);
+    setAccountIdInput("");
+    setAccountIdError("");
   };
 
   const loadApproverGroups = async () => {
@@ -249,7 +269,6 @@ function Customers(props) {
 
   const openAddModal = () => {
     resetForm();
-    loadAccounts();
     loadApproverGroups();
     setAddModalVisible(true);
   };
@@ -265,17 +284,18 @@ function Customers(props) {
         label: customer.status === 'active' ? 'Active' : 'Inactive',
         value: customer.status || 'active'
       });
-      
-      // Load accounts and set selected
-      loadAccounts().then(() => {
-        if (customer.accountIds) {
-          const selected = customer.accountIds.map(id => {
-            const account = accounts.find(acc => acc.value === id);
-            return account || { label: id, value: id };
-          });
-          setSelectedAccounts(selected);
-        }
+      setPermissionSet({
+        label: customer.permissionSet === 'admin' ? 'Admin' : customer.permissionSet === 'custom' ? 'Custom' : 'Read-Only',
+        value: customer.permissionSet || 'read-only'
       });
+      
+      // Set account IDs as tokens
+      if (customer.accountIds) {
+        setSelectedAccounts(customer.accountIds.map(id => ({
+          label: id,
+          dismissLabel: `Remove ${id}`
+        })));
+      }
       
       // Load groups and set selected
       loadApproverGroups().then(() => {
@@ -300,6 +320,8 @@ function Customers(props) {
     setStatus({ label: "Active", value: "active" });
     setPermissionSet({ label: "Read-Only", value: "read-only" });
     setSelectedAccounts([]);
+    setAccountIdInput("");
+    setAccountIdError("");
     setSelectedApproverGroups([]);
     setNameError("");
     setEmailError("");
@@ -347,7 +369,7 @@ function Customers(props) {
         adminEmail: adminEmail,
         adminName: adminName,
         status: status.value,
-        accountIds: selectedAccounts.map(acc => acc.value),
+        accountIds: selectedAccounts.map(acc => acc.label),
         approverGroupIds: selectedApproverGroups.map(grp => grp.value),
         modifiedBy: props.user || "system",
         // Role-based onboarding fields
@@ -363,23 +385,24 @@ function Customers(props) {
       
       const newCustomer = result.data.createCustomers;
       
-      // Send invitation email if admin email is provided
+      // Trigger send invitation email if admin email is provided
       if (adminEmail) {
         try {
-          // Note: This would call a Lambda function via API Gateway
-          // For now, we'll just log it. The Lambda can be invoked separately.
-          console.log('Customer created, invitation should be sent:', {
-            customerId: newCustomer.id,
-            customerName: newCustomer.name,
-            adminEmail: newCustomer.adminEmail,
-            invitationToken: newCustomer.invitationToken,
-            permissionSet: newCustomer.permissionSet
-          });
+          await API.graphql(
+            graphqlOperation(queries.sendCustomerInvitation, {
+              customerId: newCustomer.id,
+              customerName: customerName,
+              adminEmail: adminEmail,
+              adminName: adminName,
+              invitationToken: invitationToken,
+              permissionSet: permissionSet.value
+            })
+          );
           
           if (props.addNotification) {
             props.addNotification([{
               type: 'success',
-              content: `Customer created successfully! An invitation email will be sent to ${adminEmail}`,
+              content: `Customer "${customerName}" created successfully! An invitation email has been sent to ${adminEmail}.`,
               dismissible: true,
               dismissLabel: 'Dismiss',
               onDismiss: () => props.addNotification([])
@@ -390,12 +413,22 @@ function Customers(props) {
           if (props.addNotification) {
             props.addNotification([{
               type: 'warning',
-              content: 'Customer created, but failed to send invitation email. You can resend it later.',
+              content: `Customer "${customerName}" created, but failed to send invitation email. You can resend it later.`,
               dismissible: true,
               dismissLabel: 'Dismiss',
               onDismiss: () => props.addNotification([])
             }]);
           }
+        }
+      } else {
+        if (props.addNotification) {
+          props.addNotification([{
+            type: 'success',
+            content: `Customer "${customerName}" created successfully. No invitation email sent (no admin email provided).`,
+            dismissible: true,
+            dismissLabel: 'Dismiss',
+            onDismiss: () => props.addNotification([])
+          }]);
         }
       }
       
@@ -407,7 +440,7 @@ function Customers(props) {
       if (props.addNotification) {
         props.addNotification([{
           type: 'error',
-          content: `Error creating customer: ${error.message}`,
+          content: `Error creating customer: ${error.message || error.errors?.[0]?.message || 'Unknown error'}`,
           dismissible: true,
           dismissLabel: 'Dismiss',
           onDismiss: () => props.addNotification([])
@@ -430,7 +463,7 @@ function Customers(props) {
         adminEmail: adminEmail,
         adminName: adminName,
         status: status.value,
-        accountIds: selectedAccounts.map(acc => acc.value),
+        accountIds: selectedAccounts.map(acc => acc.label),
         approverGroupIds: selectedApproverGroups.map(grp => grp.value),
         modifiedBy: props.user || "system"
       };
@@ -470,6 +503,129 @@ function Customers(props) {
       alert("Error deleting customer: " + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendInvitation = async () => {
+    if (selectedCustomer.length !== 1) return;
+    const customer = selectedCustomer[0];
+    
+    if (!customer.adminEmail) {
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'error',
+          content: 'Cannot resend invitation: No admin email configured for this customer.',
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+      return;
+    }
+    
+    setResending(true);
+    try {
+      await API.graphql(
+        graphqlOperation(queries.sendCustomerInvitation, {
+          customerId: customer.id,
+          customerName: customer.name,
+          adminEmail: customer.adminEmail,
+          adminName: customer.adminName,
+          invitationToken: customer.invitationToken,
+          permissionSet: customer.permissionSet || 'read-only'
+        })
+      );
+      
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'success',
+          content: `Invitation email resent to ${customer.adminEmail}.`,
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+      fetchCustomers();
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+      if (props.addNotification) {
+        props.addNotification([{
+          type: 'error',
+          content: `Error resending invitation: ${error.message || error.errors?.[0]?.message || 'Unknown error'}`,
+          dismissible: true,
+          dismissLabel: 'Dismiss',
+          onDismiss: () => props.addNotification([])
+        }]);
+      }
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const openVerifyModal = () => {
+    if (selectedCustomer.length !== 1) return;
+    const customer = selectedCustomer[0];
+    
+    // Pre-populate roleArn if available, or build expected ARN
+    if (customer.roleArn) {
+      setRoleArnInput(customer.roleArn);
+    } else if (customer.accountIds && customer.accountIds.length > 0) {
+      setRoleArnInput(`arn:aws:iam::${customer.accountIds[0]}:role/${MSP_ROLE_NAME}`);
+    } else {
+      setRoleArnInput("");
+    }
+    setRoleArnError("");
+    setVerifyResult(null);
+    setVerifyModalVisible(true);
+  };
+
+  const handleVerifyRole = async () => {
+    if (selectedCustomer.length !== 1) return;
+    const customer = selectedCustomer[0];
+    
+    if (!roleArnInput.trim()) {
+      setRoleArnError("Role ARN is required");
+      return;
+    }
+    
+    if (!/^arn:aws:iam::\d{12}:role\/.+$/.test(roleArnInput.trim())) {
+      setRoleArnError("Invalid ARN format. Expected: arn:aws:iam::<account-id>:role/<role-name>");
+      return;
+    }
+    
+    setVerifying(true);
+    setVerifyResult(null);
+    setRoleArnError("");
+    
+    try {
+      const result = await API.graphql(
+        graphqlOperation(queries.verifyCustomerRole, {
+          customerId: customer.id,
+          roleArn: roleArnInput.trim(),
+          externalId: customer.externalId
+        })
+      );
+      
+      const verification = result.data.verifyCustomerRole;
+      setVerifyResult(verification);
+      
+      if (verification.success) {
+        if (props.addNotification) {
+          props.addNotification([{
+            type: 'success',
+            content: `Role verified successfully for "${customer.name}". Status: Established.`,
+            dismissible: true,
+            dismissLabel: 'Dismiss',
+            onDismiss: () => props.addNotification([])
+          }]);
+        }
+        fetchCustomers();
+      }
+    } catch (error) {
+      console.error('Error verifying role:', error);
+      setVerifyResult({ success: false, error: error.message || error.errors?.[0]?.message || 'Unknown error' });
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -525,6 +681,23 @@ function Customers(props) {
                   iconName="refresh"
                   ariaLabel="Refresh"
                 />
+                <Button
+                  disabled={selectedCustomer.length !== 1 || !selectedCustomer[0]?.adminEmail}
+                  onClick={handleResendInvitation}
+                  loading={resending}
+                >
+                  Resend invitation
+                </Button>
+                <Button
+                  disabled={
+                    selectedCustomer.length !== 1 ||
+                    !selectedCustomer[0]?.externalId ||
+                    selectedCustomer[0]?.roleStatus === 'established'
+                  }
+                  onClick={openVerifyModal}
+                >
+                  Verify role
+                </Button>
                 <Button
                   disabled={selectedCustomer.length !== 1}
                   onClick={openEditModal}
@@ -667,23 +840,40 @@ function Customers(props) {
             </FormField>
 
             <FormField
-              label="AWS Accounts"
+              label="AWS Account IDs"
               stretch
-              description="Select the AWS accounts that belong to this customer."
+              description="Enter the customer's AWS Account IDs (12-digit numbers). These are NOT from your Organization — they are provided by the customer."
+              errorText={accountIdError}
             >
-              {accountsLoading ? (
-                <Spinner />
-              ) : (
-                <Multiselect
-                  selectedOptions={selectedAccounts}
-                  onChange={({ detail }) =>
-                    setSelectedAccounts(detail.selectedOptions)
-                  }
-                  options={accounts}
-                  placeholder="Choose AWS accounts"
-                  filteringType="auto"
-                />
-              )}
+              <SpaceBetween size="xs">
+                <SpaceBetween direction="horizontal" size="xs">
+                  <Input
+                    value={accountIdInput}
+                    onChange={({ detail }) => {
+                      setAccountIdInput(detail.value);
+                      setAccountIdError("");
+                    }}
+                    onKeyDown={({ detail }) => {
+                      if (detail.key === 'Enter') {
+                        addAccountId();
+                      }
+                    }}
+                    placeholder="e.g., 111122223333"
+                    type="text"
+                  />
+                  <Button onClick={addAccountId} disabled={!accountIdInput.trim()}>
+                    Add
+                  </Button>
+                </SpaceBetween>
+                {selectedAccounts.length > 0 && (
+                  <TokenGroup
+                    items={selectedAccounts}
+                    onDismiss={({ detail: { itemIndex } }) => {
+                      setSelectedAccounts(selectedAccounts.filter((_, i) => i !== itemIndex));
+                    }}
+                  />
+                )}
+              </SpaceBetween>
             </FormField>
 
             <FormField
@@ -821,23 +1011,40 @@ function Customers(props) {
             </FormField>
 
             <FormField
-              label="AWS Accounts"
+              label="AWS Account IDs"
               stretch
-              description="Select the AWS accounts that belong to this customer."
+              description="Enter the customer's AWS Account IDs (12-digit numbers). These are NOT from your Organization — they are provided by the customer."
+              errorText={accountIdError}
             >
-              {accountsLoading ? (
-                <Spinner />
-              ) : (
-                <Multiselect
-                  selectedOptions={selectedAccounts}
-                  onChange={({ detail }) =>
-                    setSelectedAccounts(detail.selectedOptions)
-                  }
-                  options={accounts}
-                  placeholder="Choose AWS accounts"
-                  filteringType="auto"
-                />
-              )}
+              <SpaceBetween size="xs">
+                <SpaceBetween direction="horizontal" size="xs">
+                  <Input
+                    value={accountIdInput}
+                    onChange={({ detail }) => {
+                      setAccountIdInput(detail.value);
+                      setAccountIdError("");
+                    }}
+                    onKeyDown={({ detail }) => {
+                      if (detail.key === 'Enter') {
+                        addAccountId();
+                      }
+                    }}
+                    placeholder="e.g., 111122223333"
+                    type="text"
+                  />
+                  <Button onClick={addAccountId} disabled={!accountIdInput.trim()}>
+                    Add
+                  </Button>
+                </SpaceBetween>
+                {selectedAccounts.length > 0 && (
+                  <TokenGroup
+                    items={selectedAccounts}
+                    onDismiss={({ detail: { itemIndex } }) => {
+                      setSelectedAccounts(selectedAccounts.filter((_, i) => i !== itemIndex));
+                    }}
+                  />
+                )}
+              </SpaceBetween>
             </FormField>
 
             <FormField
@@ -895,6 +1102,74 @@ function Customers(props) {
             : `${selectedCustomer.length} customers`}
           ?
         </Box>
+      </Modal>
+
+      {/* Verify Role Modal */}
+      <Modal
+        onDismiss={() => setVerifyModalVisible(false)}
+        visible={verifyModalVisible}
+        size="medium"
+        footer={
+          <Box float="right">
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button
+                variant="link"
+                onClick={() => setVerifyModalVisible(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleVerifyRole}
+                loading={verifying}
+              >
+                Verify role
+              </Button>
+            </SpaceBetween>
+          </Box>
+        }
+        header="Verify customer role"
+      >
+        <SpaceBetween size="m">
+          {selectedCustomer.length === 1 && (
+            <Box>
+              <Box variant="p">
+                Verify that the IAM role has been created in <strong>{selectedCustomer[0].name}</strong>'s AWS account.
+              </Box>
+              {selectedCustomer[0].roleStatus && (
+                <Box margin={{ top: "s" }}>
+                  <strong>Current status: </strong>
+                  <RoleStatusIndicator roleStatus={selectedCustomer[0].roleStatus} />
+                </Box>
+              )}
+            </Box>
+          )}
+          
+          <FormField
+            label="Role ARN"
+            errorText={roleArnError}
+            stretch
+            constraintText={`The ARN of the IAM role created in the customer's account. Format: arn:aws:iam::<account-id>:role/${MSP_ROLE_NAME}`}
+          >
+            <Input
+              value={roleArnInput}
+              onChange={({ detail }) => {
+                setRoleArnInput(detail.value);
+                setRoleArnError("");
+              }}
+              placeholder={`arn:aws:iam::111122223333:role/${MSP_ROLE_NAME}`}
+            />
+          </FormField>
+          
+          {verifyResult && (
+            <Alert type={verifyResult.success ? "success" : "error"}>
+              {verifyResult.success
+                ? `Role verified successfully! The role is now established and ready for access requests.`
+                : `Verification failed: ${verifyResult.error || 'Unknown error'}. Please ensure the customer has deployed the CloudFormation template.`
+              }
+            </Alert>
+          )}
+        </SpaceBetween>
       </Modal>
     </>
   );

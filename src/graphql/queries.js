@@ -583,6 +583,18 @@ export const getCustomers = /* GraphQL */ `
       createdAt
       modifiedBy
       metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
       __typename
     }
   }
@@ -607,10 +619,68 @@ export const listCustomers = /* GraphQL */ `
         createdAt
         modifiedBy
         metadata
+        permissionSet
+        roleStatus
+        roleArn
+        externalId
+        invitationToken
+        invitationSentAt
+        invitationExpiresAt
+        approvedAt
+        roleEstablishedAt
+        lastRoleVerification
+        roleVerificationError
         __typename
       }
       nextToken
       __typename
+    }
+  }
+`;
+export const sendCustomerInvitation = /* GraphQL */ `
+  query SendCustomerInvitation(
+    $customerId: String!
+    $customerName: String!
+    $adminEmail: String!
+    $adminName: String
+    $invitationToken: String!
+    $permissionSet: String
+  ) {
+    sendCustomerInvitation(
+      customerId: $customerId
+      customerName: $customerName
+      adminEmail: $adminEmail
+      adminName: $adminName
+      invitationToken: $invitationToken
+      permissionSet: $permissionSet
+    ) {
+      success
+      customerId
+      messageId
+      sentAt
+      expiresAt
+      error
+    }
+  }
+`;
+export const verifyCustomerRole = /* GraphQL */ `
+  query VerifyCustomerRole(
+    $customerId: String!
+    $roleArn: String!
+    $externalId: String!
+  ) {
+    verifyCustomerRole(
+      customerId: $customerId
+      roleArn: $roleArn
+      externalId: $externalId
+    ) {
+      success
+      customerId
+      roleStatus
+      accountId
+      error
+      errorCode
+      verifiedAt
     }
   }
 `;
