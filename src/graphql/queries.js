@@ -684,3 +684,15 @@ export const verifyCustomerRole = /* GraphQL */ `
     }
   }
 `;
+export const getMultiTenantCredentials = /* GraphQL */ `
+  query GetMultiTenantCredentials($requestId: String!, $accessType: String!) {
+    getMultiTenantCredentials(requestId: $requestId, accessType: $accessType) {
+      consoleUrl
+      accessKeyId
+      secretAccessKey
+      sessionToken
+      expiration
+      error
+    }
+  }
+`;

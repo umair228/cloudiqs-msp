@@ -1,7 +1,12 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "{\"createdOn\":\"Linux\",\"createdBy\":\"Amplify\",\"createdWith\":\"9.2.1\",\"stackType\":\"function-Lambda\",\"metadata\":{}}",
+  "Description": "Lambda Function resource stack creation using Amplify CLI",
   "Parameters": {
+    "CloudWatchRule": {
+      "Type": "String",
+      "Default": "NONE",
+      "Description": " Schedule Expression"
+    },
     "deploymentBucketName": {
       "Type": "String"
     },
@@ -10,10 +15,6 @@
     },
     "s3Key": {
       "Type": "String"
-    },
-    "apiteamGraphQLAPIIdOutput": {
-      "Type": "String",
-      "Default": "apiteamGraphQLAPIIdOutput"
     }
   },
   "Conditions": {
@@ -45,16 +46,16 @@
             "Ref": "s3Key"
           }
         },
-        "Handler": "index.lambda_handler",
+        "Handler": "index.handler",
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "teamNotifications",
+            "teamMultiTenantGrant",
             {
               "Fn::Join": [
                 "",
                 [
-                  "teamNotifications",
+                  "teamMultiTenantGrant",
                   "-",
                   {
                     "Ref": "env"
@@ -72,12 +73,8 @@
             "REGION": {
               "Ref": "AWS::Region"
             },
-            "SETTINGS_TABLE_NAME": {
-              "Fn::ImportValue": {
-                "Fn::Sub": "${apiteamGraphQLAPIIdOutput}:GetAtt:SettingsTable:Name"
-              }
-            },
-            "CUSTOMERS_TABLE_NAME": "Customers-aulamfydfvg5fmjl4uboxne7du-main"
+            "CUSTOMERS_TABLE": "Customers-aulamfydfvg5fmjl4uboxne7du-main",
+            "REQUESTS_TABLE_NAME": "requests-aulamfydfvg5fmjl4uboxne7du-main"
           }
         },
         "Role": {
@@ -86,9 +83,10 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.10",
+        "Runtime": "python3.9",
         "Layers": [],
-        "Timeout": 120
+        "Timeout": 30,
+        "MemorySize": 256
       }
     },
     "LambdaExecutionRole": {
@@ -97,12 +95,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "teamLambdaRoledab1354c",
+            "teamLambdaRoleMTGrant",
             {
               "Fn::Join": [
                 "",
                 [
-                  "teamLambdaRoledab1354c",
+                  "teamLambdaRoleMTGrant",
                   "-",
                   {
                     "Ref": "env"
@@ -154,7 +152,7 @@
               ],
               "Resource": {
                 "Fn::Sub": [
-                  "arn:${AWS::Partition}:logs:${region}:${account}:log-group:/aws/lambda/${lambda}:log-stream:*",
+                  "arn:aws:logs:${region}:${account}:log-group:/aws/lambda/${lambda}:log-stream:*",
                   {
                     "region": {
                       "Ref": "AWS::Region"
@@ -168,33 +166,26 @@
                   }
                 ]
               }
-            },
+            }
+          ]
+        }
+      }
+    },
+    "CustomLambdaExecutionPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "custom-lambda-execution-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
               "Effect": "Allow",
               "Action": [
-                "dynamodb:GetItem"
+                "sts:AssumeRole"
               ],
               "Resource": [
-                {
-                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Settings-*"
-                }
+                "arn:aws:iam::*:role/CloudIQS-MSP-*"
               ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "ses:SendEmail"
-              ],
-              "Resource": "*"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "sns:Publish"
-              ],
-              "Resource": {
-                "Fn::ImportValue": "NotificationTopicArn"
-              }
             },
             {
               "Effect": "Allow",
@@ -211,10 +202,27 @@
                   "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Customers-*/index/*"
                 }
               ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:GetItem"
+              ],
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/requests-*"
+                }
+              ]
             }
           ]
-        }
-      }
+        },
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ]
+      },
+      "DependsOn": "LambdaExecutionRole"
     }
   },
   "Outputs": {

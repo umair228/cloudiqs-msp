@@ -21,6 +21,7 @@ import { API, graphqlOperation } from "aws-amplify";
 import { onUpdateRequests} from "../../graphql/subscriptions";
 import Status from "../Shared/Status";
 import Details from "../Shared/Details";
+import ActiveAccessActions from "./ActiveAccessActions";
 import "../../index.css";
 import { useHistory } from "react-router-dom";
 
@@ -475,6 +476,7 @@ function View(props) {
               header="Request details"
             >
               <Details item={selectedItems[0]} status={expand} expiry={expiry} />
+              <ActiveAccessActions request={selectedItems[0]} />
             </Modal>
             <Modal
               onDismiss={() => setCancelVisible(false)}
