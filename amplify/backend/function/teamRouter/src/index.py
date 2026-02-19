@@ -458,15 +458,18 @@ async def updateRequestDetails(request_id, username, accountId, roleId):
     approver_details = await get_approvers_details(accountId)
     approver_ids = approver_details["approver_ids"]
     approvers = approver_details["approvers"]
-    session_duration = await getPsDuration(roleId)
-    
+
     input = {
         'id': request_id,
         'email': email,
         'approvers': approvers,
         'approver_ids': approver_ids,
-        'session_duration': session_duration        
     }
+
+    # Only fetch SSO permission set duration for SSO role IDs
+    if not roleId.startswith("mt-"):
+        session_duration = await getPsDuration(roleId)
+        input['session_duration'] = session_duration
     
     updateRequest(input)
 

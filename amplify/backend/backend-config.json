@@ -483,6 +483,16 @@
       ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "teamMultiTenantGrant": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "teamGetMultiTenantCredentials": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     }
   },
   "hosting": {
@@ -890,6 +900,38 @@
         {
           "category": "function",
           "resourceName": "teamRejectInvitation"
+        }
+      ]
+    },
+    "AMPLIFY_function_teamMultiTenantGrant_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "teamMultiTenantGrant"
+        }
+      ]
+    },
+    "AMPLIFY_function_teamMultiTenantGrant_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "teamMultiTenantGrant"
+        }
+      ]
+    },
+    "AMPLIFY_function_teamGetMultiTenantCredentials_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "teamGetMultiTenantCredentials"
+        }
+      ]
+    },
+    "AMPLIFY_function_teamGetMultiTenantCredentials_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "teamGetMultiTenantCredentials"
         }
       ]
     },

@@ -31,6 +31,17 @@ import { listCustomers } from "../../graphql/queries";
 import params from "../../parameters.json";
 
 function Request(props) {
+  const MULTI_TENANT_ROLES = [
+    { name: 'ReadOnlyAccess', id: 'mt-ReadOnlyAccess', description: 'Read-only access to all resources' },
+    { name: 'S3FullAccess', id: 'mt-S3FullAccess', description: 'Full S3 access' },
+    { name: 'EC2FullAccess', id: 'mt-EC2FullAccess', description: 'Full EC2 access' },
+    { name: 'PowerUserAccess', id: 'mt-PowerUserAccess', description: 'Full access except IAM' },
+    { name: 'AdministratorAccess', id: 'mt-AdministratorAccess', description: 'Full admin access' },
+    { name: 'DatabaseAdmin', id: 'mt-DatabaseAdmin', description: 'RDS and DynamoDB access' },
+    { name: 'NetworkAdmin', id: 'mt-NetworkAdmin', description: 'VPC and Route53 access' },
+    { name: 'SecurityAudit', id: 'mt-SecurityAudit', description: 'Security audit access' },
+  ];
+
   const [email, setEmail] = useState("");
 
   const [item, setItem] = useState([]);
@@ -114,14 +125,42 @@ function Request(props) {
   async function getPermissions(accountId) {
     let permissionData = [];
     setRole([]);
-    item.forEach((data) => {
-      data.accounts.forEach((account) => {
-        if (account.id === accountId) {
-          permissionData = permissionData.concat(data.permissions);
-        }
+
+    // Check if this account belongs to a multi-tenant customer
+    const customer = customers.find(c =>
+      c.accountIds && c.accountIds.includes(accountId) &&
+      c.roleStatus === 'established'
+    );
+
+    if (customer) {
+      let availableRoles = [];
+      switch (customer.permissionSet) {
+        case 'admin':
+          availableRoles = MULTI_TENANT_ROLES;
+          break;
+        case 'read-only':
+          availableRoles = MULTI_TENANT_ROLES.filter(r =>
+            ['ReadOnlyAccess', 'SecurityAudit'].includes(r.name)
+          );
+          break;
+        case 'custom':
+          availableRoles = MULTI_TENANT_ROLES.filter(r => r.name !== 'AdministratorAccess');
+          break;
+        default:
+          availableRoles = MULTI_TENANT_ROLES.filter(r => r.name === 'ReadOnlyAccess');
+      }
+      setPermissions(availableRoles);
+      setPermissionStatus("finished");
+    } else {
+      item.forEach((data) => {
+        data.accounts.forEach((account) => {
+          if (account.id === accountId) {
+            permissionData = permissionData.concat(data.permissions);
+          }
+        });
       });
-    });
-    setPermissions(concatenatePermissions(permissionData));
+      setPermissions(concatenatePermissions(permissionData));
+    }
     return permissionData;
   }
 
@@ -355,6 +394,10 @@ function Request(props) {
     return false;
   }
   async function checkApprovalAndApproverGroups(account, role) {
+    // Multi-tenant roles skip SSO approver group check
+    if (role && typeof role === 'string' && role.startsWith("mt-")) {
+      return true;
+    }
     if (await checkApprovalNotRequired(account, role)) {
       return true;
     }

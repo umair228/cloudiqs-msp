@@ -236,6 +236,81 @@ def send_slack_notifications(
             )
 
 
+def build_customer_notification_email(event, login_url):
+    """Build an informational email for the customer admin when their account is accessed."""
+    requester = event.get("email", "Unknown")
+    account = f'{event["accountName"]} ({event["accountId"]})'
+    role = event.get("role", "Unknown")
+    duration_hours = event.get("time", "Unknown")
+    justification = event.get("justification", "No justification provided")
+    ticket = event.get("ticketNo", "No ticket provided")
+    request_start_time = event.get("startTime", "Unknown")
+
+    html = f"""<html><body>
+<h2 style="color: #232f3e;">CloudIQS MSP - Account Access Notification</h2>
+<p>This is an informational notification that a CloudIQS MSP engineer has been granted access to your AWS account.</p>
+<table style="border-collapse: collapse; width: 100%; max-width: 600px;">
+<tr style="background-color: #f2f3f3;"><td style="padding: 8px; border: 1px solid #d5dbdb;"><b>Requester</b></td><td style="padding: 8px; border: 1px solid #d5dbdb;">{requester}</td></tr>
+<tr><td style="padding: 8px; border: 1px solid #d5dbdb;"><b>Account</b></td><td style="padding: 8px; border: 1px solid #d5dbdb;">{account}</td></tr>
+<tr style="background-color: #f2f3f3;"><td style="padding: 8px; border: 1px solid #d5dbdb;"><b>Role</b></td><td style="padding: 8px; border: 1px solid #d5dbdb;">{role}</td></tr>
+<tr><td style="padding: 8px; border: 1px solid #d5dbdb;"><b>Start Time</b></td><td style="padding: 8px; border: 1px solid #d5dbdb;">{request_start_time}</td></tr>
+<tr style="background-color: #f2f3f3;"><td style="padding: 8px; border: 1px solid #d5dbdb;"><b>Duration</b></td><td style="padding: 8px; border: 1px solid #d5dbdb;">{duration_hours} hours</td></tr>
+<tr><td style="padding: 8px; border: 1px solid #d5dbdb;"><b>Justification</b></td><td style="padding: 8px; border: 1px solid #d5dbdb;">{justification}</td></tr>
+<tr style="background-color: #f2f3f3;"><td style="padding: 8px; border: 1px solid #d5dbdb;"><b>Ticket Number</b></td><td style="padding: 8px; border: 1px solid #d5dbdb;">{ticket}</td></tr>
+</table>
+<p style="margin-top: 20px; color: #545b64;">This access was pre-approved during your onboarding process. If you have concerns, please contact your CloudIQS MSP administrator.</p>
+</body></html>"""
+    return html
+
+
+def send_customer_notification(event, ses_source_email, ses_source_arn):
+    """Send notification email to the customer admin for multi-tenant access."""
+    try:
+        customers_table_name = os.getenv("CUSTOMERS_TABLE_NAME")
+        if not customers_table_name:
+            print("CUSTOMERS_TABLE_NAME not set, skipping customer notification")
+            return
+
+        dynamodb_resource = session.resource("dynamodb")
+        cust_table = dynamodb_resource.Table(customers_table_name)
+
+        account_id = event.get("accountId", "")
+        response = cust_table.scan(
+            FilterExpression='contains(accountIds, :acctId) AND roleStatus = :status',
+            ExpressionAttributeValues={
+                ':acctId': account_id,
+                ':status': 'established'
+            }
+        )
+
+        if not response.get('Items'):
+            print(f"No established customer found for account {account_id}")
+            return
+
+        customer = response['Items'][0]
+        admin_email = customer.get('adminEmail')
+        if not admin_email:
+            print("Customer has no admin email configured")
+            return
+
+        login_url = event.get("sso_login_url", "")
+        html = build_customer_notification_email(event, login_url)
+        account = f'{event["accountName"]} ({event["accountId"]})'
+        subject = f"CloudIQS MSP - Access notification for {account}"
+
+        send_ses_notification(
+            source_email=ses_source_email,
+            source_arn=ses_source_arn,
+            message_html=html,
+            subject=subject,
+            to_addresses=[admin_email],
+            cc_addresses=[]
+        )
+        print(f"Customer notification sent to {admin_email}")
+    except Exception as e:
+        print(f"Error sending customer notification: {e}")
+
+
 def lambda_handler(event: dict, context):
     ses_notifications_enabled = event.get("ses_notifications_enabled", "")
     ses_source_email = event.get("ses_source_email", "")
@@ -415,3 +490,8 @@ def lambda_handler(event: dict, context):
             justification=justification,
             ticket=ticket,
         )
+
+    # Send customer admin notification for multi-tenant access
+    is_multi_tenant = event.get("isMultiTenant", False)
+    if is_multi_tenant and request_status in ["pending", "granted"] and ses_notifications_enabled:
+        send_customer_notification(event, ses_source_email, ses_source_arn)
