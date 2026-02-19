@@ -171,7 +171,24 @@
     "CustomLambdaExecutionPolicy": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
-        "PolicyName": "custom-lambda-execution-policy",
+        "PolicyName": {
+          "Fn::If": [
+            "ShouldNotCreateEnvResources",
+            "custom-lambda-execution-policy",
+            {
+              "Fn::Join": [
+                "",
+                [
+                  "custom-lambda-execution-policy",
+                  "-",
+                  {
+                    "Ref": "env"
+                  }
+                ]
+              ]
+            }
+          ]
+        },
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
