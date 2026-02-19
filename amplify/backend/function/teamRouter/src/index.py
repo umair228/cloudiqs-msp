@@ -470,6 +470,8 @@ async def updateRequestDetails(request_id, username, accountId, roleId):
     if not roleId.startswith("mt-"):
         session_duration = await getPsDuration(roleId)
         input['session_duration'] = session_duration
+    else:
+        input['session_duration'] = 'PT1H'
     
     updateRequest(input)
 

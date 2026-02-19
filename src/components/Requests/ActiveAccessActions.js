@@ -92,7 +92,7 @@ function ActiveAccessActions({ request }) {
 
   function getCredentialsFileFormat() {
     if (!cliCredentials) return "";
-    const profileName = `cloudiq-${request.accountId}-${request.role || "session"}`;
+    const profileName = `cloudiq-${request.accountId}-${request.roleId ? request.roleId.replace('mt-', '') : 'session'}`;
     return [
       `[${profileName}]`,
       `aws_access_key_id = ${cliCredentials.accessKeyId}`,
