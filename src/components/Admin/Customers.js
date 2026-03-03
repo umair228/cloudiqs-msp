@@ -35,7 +35,7 @@ import "../../index.css";
 import * as mutations from "../../graphql/mutations";
 import * as queries from "../../graphql/queries";
 
-const MSP_ROLE_NAME = 'CloudIQS-MSP-AccessRole';
+const MSP_ROLE_NAME = 'CloudIQS-MSP-ReadOnlyRole';
 
 const COLUMN_DEFINITIONS = [
   {

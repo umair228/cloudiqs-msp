@@ -24,6 +24,7 @@ import { useHistory } from "react-router-dom";
 import { sessions, updateStatus, getSetting} from "../Shared/RequestService";
 import { API, graphqlOperation } from "aws-amplify";
 import { onUpdateRequests } from "../../graphql/subscriptions";
+import { getMultiTenantCredentials } from "../../graphql/queries";
 import Status from "../Shared/Status";
 import Details from "../Shared/Details";
 import "../../index.css";
@@ -147,6 +148,7 @@ const MyCollectionPreferences = ({ preferences, setPreferences }) => {
               { id: "justification", label: "Justification" },
               { id: "ticketNo", label: "TicketNo" },
               { id: "status", label: "Status" },
+              { id: "access", label: "Access" },
             ],
           },
         ],
@@ -185,6 +187,7 @@ function Active(props) {
       "justification",
       "ticketNo",
       "status",
+      "access",
     ],
   });
 
@@ -277,6 +280,55 @@ function Active(props) {
   const [expand, setExpand] = useState(false);
   const [viewLogs, setViewLogs] = useState(false);
   const [commentRequired, setCommentRequired] = useState(true);
+  const [cliModalVisible, setCliModalVisible] = useState(false);
+  const [cliCredentials, setCliCredentials] = useState(null);
+
+  async function handleMultiTenantAccess(item, accessType) {
+    try {
+      const result = await API.graphql(
+        graphqlOperation(getMultiTenantCredentials, {
+          requestId: item.id,
+          accessType: accessType,
+        })
+      );
+
+      const data = result.data.getMultiTenantCredentials;
+
+      if (data.error) {
+        props.addNotification([
+          {
+            type: "error",
+            content: data.error,
+            dismissible: true,
+            onDismiss: () => props.addNotification([]),
+          },
+        ]);
+        return;
+      }
+
+      if (accessType === "console" && data.consoleUrl) {
+        window.open(data.consoleUrl, "_blank");
+      } else if (accessType === "cli") {
+        setCliCredentials({
+          accessKeyId: data.accessKeyId,
+          secretAccessKey: data.secretAccessKey,
+          sessionToken: data.sessionToken,
+          expiration: data.expiration,
+        });
+        setCliModalVisible(true);
+      }
+    } catch (error) {
+      console.error("Error getting multi-tenant credentials:", error);
+      props.addNotification([
+        {
+          type: "error",
+          content: "Failed to get access credentials",
+          dismissible: true,
+          onDismiss: () => props.addNotification([]),
+        },
+      ]);
+    }
+  }
 
   useEffect(() => {
     views();
@@ -446,7 +498,38 @@ function Active(props) {
             />
           </div>
         }
-        columnDefinitions={COLUMN_DEFINITIONS}
+        columnDefinitions={[
+          ...COLUMN_DEFINITIONS,
+          {
+            id: "access",
+            header: "Access",
+            cell: (item) => {
+              if (
+                item.roleId &&
+                item.roleId.startsWith("mt-") &&
+                item.status === "in progress"
+              ) {
+                return (
+                  <SpaceBetween direction="horizontal" size="xs">
+                    <Button
+                      variant="primary"
+                      onClick={() => handleMultiTenantAccess(item, "console")}
+                    >
+                      Console
+                    </Button>
+                    <Button
+                      onClick={() => handleMultiTenantAccess(item, "cli")}
+                    >
+                      CLI Creds
+                    </Button>
+                  </SpaceBetween>
+                );
+              }
+              return "-";
+            },
+            minWidth: 10,
+          },
+        ]}
         visibleColumns={preferences.visibleContent}
         pagination={<Pagination {...paginationProps} />}
         preferences={
@@ -626,6 +709,48 @@ function Active(props) {
           </Modal>
         ) : null}
       </div>
+      {cliCredentials && (
+        <Modal
+          onDismiss={() => {
+            setCliModalVisible(false);
+            setCliCredentials(null);
+          }}
+          visible={cliModalVisible}
+          closeAriaLabel="Close modal"
+          size="large"
+          header="CLI Credentials"
+          footer={
+            <Box float="right">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setCliModalVisible(false);
+                  setCliCredentials(null);
+                }}
+              >
+                Close
+              </Button>
+            </Box>
+          }
+        >
+          <SpaceBetween size="m">
+            <FormField label="AWS Access Key ID">
+              <code>{cliCredentials.accessKeyId}</code>
+            </FormField>
+            <FormField label="AWS Secret Access Key">
+              <code>{cliCredentials.secretAccessKey}</code>
+            </FormField>
+            <FormField label="AWS Session Token">
+              <code style={{ wordBreak: "break-all" }}>
+                {cliCredentials.sessionToken}
+              </code>
+            </FormField>
+            <FormField label="Expiration">
+              <code>{cliCredentials.expiration}</code>
+            </FormField>
+          </SpaceBetween>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@
       {
         "Effect": "Allow",
         "Action": "sts:AssumeRole",
-        "Resource": "arn:aws:iam::*:role/CloudIQS-MSP-AccessRole"
+        "Resource": "arn:aws:iam::*:role/CloudIQS-MSP-*"
       },
       {
         "Effect": "Allow",
