@@ -13,6 +13,8 @@ export const onCreateApprovers = /* GraphQL */ `
       groupIds
       ticketNo
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -31,6 +33,8 @@ export const onUpdateApprovers = /* GraphQL */ `
       groupIds
       ticketNo
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -49,6 +53,8 @@ export const onDeleteApprovers = /* GraphQL */ `
       groupIds
       ticketNo
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -74,6 +80,8 @@ export const onCreateSettings = /* GraphQL */ `
       slackToken
       teamAdminGroup
       teamAuditorGroup
+      teamCustomerAdminGroup
+      activationMode
       createdAt
       updatedAt
       __typename
@@ -99,6 +107,8 @@ export const onUpdateSettings = /* GraphQL */ `
       slackToken
       teamAdminGroup
       teamAuditorGroup
+      teamCustomerAdminGroup
+      activationMode
       createdAt
       updatedAt
       __typename
@@ -124,7 +134,111 @@ export const onDeleteSettings = /* GraphQL */ `
       slackToken
       teamAdminGroup
       teamAuditorGroup
+      teamCustomerAdminGroup
+      activationMode
       createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateCustomers = /* GraphQL */ `
+  subscription OnCreateCustomers(
+    $filter: ModelSubscriptionCustomersFilterInput
+  ) {
+    onCreateCustomers(filter: $filter) {
+      id
+      name
+      description
+      accountIds
+      approverGroupIds
+      adminEmail
+      adminName
+      status
+      settings
+      createdAt
+      modifiedBy
+      metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateCustomers = /* GraphQL */ `
+  subscription OnUpdateCustomers(
+    $filter: ModelSubscriptionCustomersFilterInput
+  ) {
+    onUpdateCustomers(filter: $filter) {
+      id
+      name
+      description
+      accountIds
+      approverGroupIds
+      adminEmail
+      adminName
+      status
+      settings
+      createdAt
+      modifiedBy
+      metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteCustomers = /* GraphQL */ `
+  subscription OnDeleteCustomers(
+    $filter: ModelSubscriptionCustomersFilterInput
+  ) {
+    onDeleteCustomers(filter: $filter) {
+      id
+      name
+      description
+      accountIds
+      approverGroupIds
+      adminEmail
+      adminName
+      status
+      settings
+      createdAt
+      modifiedBy
+      metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
       updatedAt
       __typename
     }
@@ -141,22 +255,30 @@ export const onCreateEligibility = /* GraphQL */ `
       accounts {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ous {
         name
         id
+        customerId
+        customerName
         __typename
       }
       permissions {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ticketNo
       approvalRequired
       duration
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -174,22 +296,30 @@ export const onUpdateEligibility = /* GraphQL */ `
       accounts {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ous {
         name
         id
+        customerId
+        customerName
         __typename
       }
       permissions {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ticketNo
       approvalRequired
       duration
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -207,22 +337,30 @@ export const onDeleteEligibility = /* GraphQL */ `
       accounts {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ous {
         name
         id
+        customerId
+        customerName
         __typename
       }
       permissions {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ticketNo
       approvalRequired
       duration
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -254,6 +392,15 @@ export const onUpdateRequests = /* GraphQL */ `
       ticketNo
       revokeComment
       session_duration
+      customerId
+      customerName
+      assignmentPrincipalId
+      assignmentPrincipalType
+      assignmentRequestId
+      activationError
+      activationStartedAt
+      activationCompletedAt
+      revocationCompletedAt
       createdAt
       updatedAt
       owner
@@ -286,6 +433,15 @@ export const onCreateRequests = /* GraphQL */ `
       ticketNo
       revokeComment
       session_duration
+      customerId
+      customerName
+      assignmentPrincipalId
+      assignmentPrincipalType
+      assignmentRequestId
+      activationError
+      activationStartedAt
+      activationCompletedAt
+      revocationCompletedAt
       createdAt
       updatedAt
       owner
@@ -305,6 +461,8 @@ export const onUpdateSessions = /* GraphQL */ `
       approver_ids
       queryId
       expireAt
+      customerId
+      customerName
       createdAt
       updatedAt
       owner
@@ -320,11 +478,15 @@ export const onPublishPolicy = /* GraphQL */ `
         accounts {
           name
           id
+          customerId
+          customerName
           __typename
         }
         permissions {
           name
           id
+          customerId
+          customerName
           __typename
         }
         approvalRequired

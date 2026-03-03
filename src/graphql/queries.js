@@ -28,6 +28,13 @@ export const getRequests = /* GraphQL */ `
       session_duration
       customerId
       customerName
+      assignmentPrincipalId
+      assignmentPrincipalType
+      assignmentRequestId
+      activationError
+      activationStartedAt
+      activationCompletedAt
+      revocationCompletedAt
       createdAt
       updatedAt
       owner
@@ -67,6 +74,13 @@ export const listRequests = /* GraphQL */ `
         session_duration
         customerId
         customerName
+        assignmentPrincipalId
+        assignmentPrincipalType
+        assignmentRequestId
+        activationError
+        activationStartedAt
+        activationCompletedAt
+        revocationCompletedAt
         createdAt
         updatedAt
         owner
@@ -119,6 +133,13 @@ export const requestByEmailAndStatus = /* GraphQL */ `
         session_duration
         customerId
         customerName
+        assignmentPrincipalId
+        assignmentPrincipalType
+        assignmentRequestId
+        activationError
+        activationStartedAt
+        activationCompletedAt
+        revocationCompletedAt
         createdAt
         updatedAt
         owner
@@ -171,6 +192,13 @@ export const requestByApproverAndStatus = /* GraphQL */ `
         session_duration
         customerId
         customerName
+        assignmentPrincipalId
+        assignmentPrincipalType
+        assignmentRequestId
+        activationError
+        activationStartedAt
+        activationCompletedAt
+        revocationCompletedAt
         createdAt
         updatedAt
         owner
@@ -193,6 +221,8 @@ export const getSessions = /* GraphQL */ `
       approver_ids
       queryId
       expireAt
+      customerId
+      customerName
       createdAt
       updatedAt
       owner
@@ -217,6 +247,8 @@ export const listSessions = /* GraphQL */ `
         approver_ids
         queryId
         expireAt
+        customerId
+        customerName
         createdAt
         updatedAt
         owner
@@ -237,6 +269,8 @@ export const getApprovers = /* GraphQL */ `
       groupIds
       ticketNo
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -258,6 +292,8 @@ export const listApprovers = /* GraphQL */ `
         groupIds
         ticketNo
         modifiedBy
+        customerId
+        customerName
         createdAt
         updatedAt
         __typename
@@ -286,6 +322,8 @@ export const getSettings = /* GraphQL */ `
       slackToken
       teamAdminGroup
       teamAuditorGroup
+      teamCustomerAdminGroup
+      activationMode
       createdAt
       updatedAt
       __typename
@@ -316,7 +354,81 @@ export const listSettings = /* GraphQL */ `
         slackToken
         teamAdminGroup
         teamAuditorGroup
+        teamCustomerAdminGroup
+        activationMode
         createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getCustomers = /* GraphQL */ `
+  query GetCustomers($id: ID!) {
+    getCustomers(id: $id) {
+      id
+      name
+      description
+      accountIds
+      approverGroupIds
+      adminEmail
+      adminName
+      status
+      settings
+      createdAt
+      modifiedBy
+      metadata
+      permissionSet
+      roleStatus
+      roleArn
+      externalId
+      cloudFormationTemplate
+      invitationToken
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      roleEstablishedAt
+      lastRoleVerification
+      roleVerificationError
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listCustomers = /* GraphQL */ `
+  query ListCustomers(
+    $filter: ModelCustomersFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listCustomers(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        name
+        description
+        accountIds
+        approverGroupIds
+        adminEmail
+        adminName
+        status
+        settings
+        createdAt
+        modifiedBy
+        metadata
+        permissionSet
+        roleStatus
+        roleArn
+        externalId
+        cloudFormationTemplate
+        invitationToken
+        invitationSentAt
+        invitationExpiresAt
+        approvedAt
+        roleEstablishedAt
+        lastRoleVerification
+        roleVerificationError
         updatedAt
         __typename
       }
@@ -334,22 +446,30 @@ export const getEligibility = /* GraphQL */ `
       accounts {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ous {
         name
         id
+        customerId
+        customerName
         __typename
       }
       permissions {
         name
         id
+        customerId
+        customerName
         __typename
       }
       ticketNo
       approvalRequired
       duration
       modifiedBy
+      customerId
+      customerName
       createdAt
       updatedAt
       __typename
@@ -367,25 +487,12 @@ export const listEligibilities = /* GraphQL */ `
         id
         name
         type
-        accounts {
-          name
-          id
-          __typename
-        }
-        ous {
-          name
-          id
-          __typename
-        }
-        permissions {
-          name
-          id
-          __typename
-        }
         ticketNo
         approvalRequired
         duration
         modifiedBy
+        customerId
+        customerName
         createdAt
         updatedAt
         __typename
@@ -476,11 +583,15 @@ export const getUserPolicy = /* GraphQL */ `
         accounts {
           name
           id
+          customerId
+          customerName
           __typename
         }
         permissions {
           name
           id
+          customerId
+          customerName
           __typename
         }
         approvalRequired
@@ -527,6 +638,13 @@ export const updateRequestData = /* GraphQL */ `
       session_duration
       customerId
       customerName
+      assignmentPrincipalId
+      assignmentPrincipalType
+      assignmentRequestId
+      activationError
+      activationStartedAt
+      activationCompletedAt
+      revocationCompletedAt
       createdAt
       updatedAt
       owner
@@ -561,78 +679,16 @@ export const validateRequest = /* GraphQL */ `
       session_duration
       customerId
       customerName
+      assignmentPrincipalId
+      assignmentPrincipalType
+      assignmentRequestId
+      activationError
+      activationStartedAt
+      activationCompletedAt
+      revocationCompletedAt
       createdAt
       updatedAt
       owner
-      __typename
-    }
-  }
-`;
-export const getCustomers = /* GraphQL */ `
-  query GetCustomers($id: ID!) {
-    getCustomers(id: $id) {
-      id
-      name
-      description
-      accountIds
-      approverGroupIds
-      adminEmail
-      adminName
-      status
-      settings
-      createdAt
-      modifiedBy
-      metadata
-      permissionSet
-      roleStatus
-      roleArn
-      externalId
-      cloudFormationTemplate
-      invitationToken
-      invitationSentAt
-      invitationExpiresAt
-      approvedAt
-      roleEstablishedAt
-      lastRoleVerification
-      roleVerificationError
-      __typename
-    }
-  }
-`;
-export const listCustomers = /* GraphQL */ `
-  query ListCustomers(
-    $filter: ModelCustomersFilterInput
-    $limit: Int
-    $nextToken: String
-  ) {
-    listCustomers(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        name
-        description
-        accountIds
-        approverGroupIds
-        adminEmail
-        adminName
-        status
-        settings
-        createdAt
-        modifiedBy
-        metadata
-        permissionSet
-        roleStatus
-        roleArn
-        externalId
-        invitationToken
-        invitationSentAt
-        invitationExpiresAt
-        approvedAt
-        roleEstablishedAt
-        lastRoleVerification
-        roleVerificationError
-        __typename
-      }
-      nextToken
       __typename
     }
   }
@@ -660,6 +716,7 @@ export const sendCustomerInvitation = /* GraphQL */ `
       sentAt
       expiresAt
       error
+      __typename
     }
   }
 `;
@@ -681,6 +738,54 @@ export const verifyCustomerRole = /* GraphQL */ `
       error
       errorCode
       verifiedAt
+      __typename
+    }
+  }
+`;
+export const getInvitationDetails = /* GraphQL */ `
+  query GetInvitationDetails($invitationToken: String!) {
+    getInvitationDetails(invitationToken: $invitationToken) {
+      id
+      name
+      description
+      adminEmail
+      adminName
+      permissionSet
+      roleStatus
+      invitationSentAt
+      invitationExpiresAt
+      approvedAt
+      cloudFormationTemplate
+      error
+      __typename
+    }
+  }
+`;
+export const approveInvitation = /* GraphQL */ `
+  query ApproveInvitation($invitationToken: String!) {
+    approveInvitation(invitationToken: $invitationToken) {
+      success
+      id
+      name
+      roleStatus
+      approvedAt
+      cloudFormationTemplate
+      error
+      __typename
+    }
+  }
+`;
+export const rejectInvitation = /* GraphQL */ `
+  query RejectInvitation($invitationToken: String!, $reason: String) {
+    rejectInvitation(invitationToken: $invitationToken, reason: $reason) {
+      success
+      id
+      name
+      roleStatus
+      approvedAt
+      cloudFormationTemplate
+      error
+      __typename
     }
   }
 `;
@@ -693,6 +798,7 @@ export const getMultiTenantCredentials = /* GraphQL */ `
       sessionToken
       expiration
       error
+      __typename
     }
   }
 `;

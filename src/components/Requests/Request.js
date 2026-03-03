@@ -18,8 +18,6 @@ import React, { useState, useEffect } from "react";
 import {
   getGroupMemberships,
   requestTeam,
-  fetchApprovers,
-  fetchOU,
   getSetting,
   getMgmtAccountPs,
   fetchPolicy,
@@ -31,17 +29,6 @@ import { listCustomers } from "../../graphql/queries";
 import params from "../../parameters.json";
 
 function Request(props) {
-  const MULTI_TENANT_ROLES = [
-    { name: 'ReadOnlyAccess', id: 'mt-ReadOnlyAccess', description: 'Read-only access to all resources' },
-    { name: 'S3FullAccess', id: 'mt-S3FullAccess', description: 'Full S3 access' },
-    { name: 'EC2FullAccess', id: 'mt-EC2FullAccess', description: 'Full EC2 access' },
-    { name: 'PowerUserAccess', id: 'mt-PowerUserAccess', description: 'Full access except IAM' },
-    { name: 'AdministratorAccess', id: 'mt-AdministratorAccess', description: 'Full admin access' },
-    { name: 'DatabaseAdmin', id: 'mt-DatabaseAdmin', description: 'RDS and DynamoDB access' },
-    { name: 'NetworkAdmin', id: 'mt-NetworkAdmin', description: 'VPC and Route53 access' },
-    { name: 'SecurityAudit', id: 'mt-SecurityAudit', description: 'Security audit access' },
-  ];
-
   const [email, setEmail] = useState("");
 
   const [item, setItem] = useState([]);
@@ -87,6 +74,8 @@ function Request(props) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const history = useHistory();
+  
+  const normalizeAccountId = (id) => String(id ?? "").trim();
 
   function concatenateAccounts(data) {
     let allAccounts = data.map((item) => item.accounts);
@@ -125,75 +114,74 @@ function Request(props) {
   async function getPermissions(accountId) {
     let permissionData = [];
     setRole([]);
-
-    // Check if this account belongs to a multi-tenant customer
-    const customer = customers.find(c =>
-      c.accountIds && c.accountIds.includes(accountId) &&
-      c.roleStatus === 'established'
-    );
-
-    if (customer) {
-      let availableRoles = [];
-      switch (customer.permissionSet) {
-        case 'admin':
-          availableRoles = MULTI_TENANT_ROLES;
-          break;
-        case 'read-only':
-          availableRoles = MULTI_TENANT_ROLES.filter(r =>
-            ['ReadOnlyAccess', 'SecurityAudit'].includes(r.name)
-          );
-          break;
-        case 'custom':
-          availableRoles = MULTI_TENANT_ROLES.filter(r => r.name !== 'AdministratorAccess');
-          break;
-        default:
-          availableRoles = MULTI_TENANT_ROLES.filter(r => r.name === 'ReadOnlyAccess');
-      }
-      setPermissions(availableRoles);
-      setPermissionStatus("finished");
-    } else {
-      item.forEach((data) => {
-        data.accounts.forEach((account) => {
-          if (account.id === accountId) {
-            permissionData = permissionData.concat(data.permissions);
-          }
-        });
+    item.forEach((data) => {
+      data.accounts.forEach((account) => {
+        if (account.id === accountId) {
+          permissionData = permissionData.concat(data.permissions);
+        }
       });
-      setPermissions(concatenatePermissions(permissionData));
-    }
+    });
+    console.log("ROLE OPTIONS for account", accountId, ":", JSON.stringify(permissionData, null, 2));
+    setPermissions(concatenatePermissions(permissionData));
     return permissionData;
   }
 
-  const getPolicy = () => {
+  function applyPolicyData(policyData) {
+    const safePolicyData = Array.isArray(policyData) ? policyData : [];
+    console.log("POLICY DATA received:", JSON.stringify(safePolicyData, null, 2));
+    setItem(safePolicyData);
+    const fetchedAccounts = concatenateAccounts(safePolicyData);
+    setAllAccounts(fetchedAccounts);
+    if (selectedCustomer?.value) {
+      filterAccountsByCustomer(selectedCustomer.value, fetchedAccounts);
+    } else {
+      setAccounts(fetchedAccounts);
+    }
+    setAccountStatus("finished");
+    setPermissionStatus("finished");
+  }
+
+  const getPolicy = async () => {
     let args = {
       userId: props.userId,
       groupIds: props.groupIds,
     };
-    fetchPolicy(args)
+    const data = await fetchPolicy(args);
+    applyPolicyData(data?.policy);
   };
 
   function publishEvent() {
     const subscription = API.graphql(graphqlOperation(onPublishPolicy)).subscribe({
       next: (result) => {
+        console.log("SUBSCRIPTION received:", JSON.stringify(result.value.data.onPublishPolicy, null, 2));
         const policy = result.value.data.onPublishPolicy.policy;
         if (policy?.length > 0) {
-          setItem(policy);
-          const allAccts = concatenateAccounts(policy);
-          setAllAccounts(allAccts);
-          setAccounts(allAccts);
+          applyPolicyData(policy);
         }
-        setAccountStatus("finished");
-        setPermissionStatus("finished");
-        subscription.unsubscribe();
       },
       error: (error) => {
-        console.warn(error);
-        subscription.unsubscribe();
+        console.warn("SUBSCRIPTION error:", error);
       }
     });
     
     // Return the subscription to allow external cleanup if needed
     return subscription;
+  }
+
+  function getSettings() {
+    getSetting("settings").then((data) => {
+      if (data !== null) {
+        setMaxDuration(parseInt(data.duration));
+        setTicketRequired(data.ticketNo);
+        setApprovalRequired(data.approval);
+      }
+    });
+  }
+
+  function getMgmtPs() {
+    getMgmtAccountPs().then((data) => {
+      setMgmtPs(data);
+    });
   }
 
   async function fetchCustomers() {
@@ -214,17 +202,20 @@ function Request(props) {
     }
   }
 
-  function filterAccountsByCustomer(customerId) {
+  function filterAccountsByCustomer(customerId, sourceAccounts = allAccounts) {
     if (!customerId) {
       // Show all accounts if no customer selected
-      setAccounts(allAccounts);
+      setAccounts(sourceAccounts);
     } else {
       // Find the customer and get their accountIds
       const customer = customers.find(c => c.id === customerId);
       if (customer && customer.accountIds && customer.accountIds.length > 0) {
         // Filter accounts by checking if account.id is in customer.accountIds
-        const filtered = allAccounts.filter(acc => 
-          customer.accountIds.includes(acc.id)
+        const customerAccountIds = new Set(
+          customer.accountIds.map((id) => normalizeAccountId(id))
+        );
+        const filtered = sourceAccounts.filter(acc => 
+          customerAccountIds.has(normalizeAccountId(acc.id))
         );
         setAccounts(filtered);
       } else {
@@ -234,36 +225,38 @@ function Request(props) {
     }
   }
 
-  function getSettings() {
-    getSetting("settings").then((data) => {
-      if (data !== null) {
-        setMaxDuration(parseInt(data.duration));
-        setTicketRequired(data.ticketNo);
-        setApprovalRequired(data.approval);
-      }
-    });
-  }
-
-  function getMgmtPs() {
-    getMgmtAccountPs().then((data) => {
-      setMgmtPs(data);
-    });
-  }
-
   useEffect(() => {
     setEmail(props.user);
     getSettings();
-    // getEligibility();
-    getPolicy();
     props.addNotification([]);
     getMgmtPs();
     setTime(moment().format());
-    publishEvent();
     fetchCustomers();
+
+    // IMPORTANT: Set up subscription FIRST, then wait before triggering the
+    // Lambda so the WebSocket is connected when the response arrives.
+    const subscription = publishEvent();
+    const timer = setTimeout(() => {
+      getPolicy();
+    }, 1500);
+
+    return () => {
+      subscription?.unsubscribe();
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function sendRequest() {
+  function getRequestErrorMessage(error) {
+    if (!error) return "Unknown error";
+    if (error.errors && error.errors.length > 0 && error.errors[0].message) {
+      return error.errors[0].message;
+    }
+    if (error.message) return error.message;
+    return "Unknown error";
+  }
+
+  async function sendRequest() {
     const data = {
       accountId: account.value,
       accountName: account.label,
@@ -276,7 +269,11 @@ function Request(props) {
       customerId: customerId || null,
       customerName: customerName || null,
     };
-    requestTeam(data).then(() => {
+    try {
+      const requestId = await requestTeam(data);
+      if (!requestId) {
+        throw new Error("Request was not created.");
+      }
       setSubmitLoading(false);
       props.addNotification([
         {
@@ -288,7 +285,17 @@ function Request(props) {
       ]);
       history.push("/requests/view");
       props.setActiveHref("/requests/view");
-    });
+    } catch (error) {
+      setSubmitLoading(false);
+      props.addNotification([
+        {
+          type: "error",
+          content: `Failed to create request: ${getRequestErrorMessage(error)}`,
+          dismissible: true,
+          onDismiss: () => props.addNotification([]),
+        },
+      ]);
+    }
   }
 
   function handleCancel() {
@@ -322,6 +329,14 @@ function Request(props) {
     }
     if (role.length < 1) {
       setRoleError("Select a role");
+      error = true;
+    } else if (
+      role.value &&
+      !/^arn:aws:sso:::permissionSet\/ssoins-[A-Za-z0-9-.]{16}\/ps-[A-Za-z0-9-.]{16}$/.test(
+        role.value
+      )
+    ) {
+      setRoleError("Select a valid IAM Identity Center permission set");
       error = true;
     }
     if (
@@ -393,46 +408,37 @@ function Request(props) {
     }
     return false;
   }
+
+  function getCustomerForAccount(accountId) {
+    const normalizedAccountId = normalizeAccountId(accountId);
+    return customers.find(
+      (customer) =>
+        Array.isArray(customer.accountIds) &&
+        customer.accountIds.some(
+          (id) => normalizeAccountId(id) === normalizedAccountId
+        ) &&
+        (customer.roleStatus === "established" || !customer.roleStatus)
+    );
+  }
+
   async function checkApprovalAndApproverGroups(account, role) {
-    // Multi-tenant roles skip SSO approver group check
-    if (role && typeof role === 'string' && role.startsWith("mt-")) {
-      return true;
-    }
     if (await checkApprovalNotRequired(account, role)) {
       return true;
     }
-    const account_approvers = await fetchApprovers(account, "Account");
-    if (account_approvers) {
-      const data = await getGroupMemberships(account_approvers.groupIds);
-      const requesterIsApprover = checkGroupMembership(
-        props.groupIds,
-        account_approvers.groupIds
-      );
-      // If the requester is also an approver, then we need at least 2 approvers to exist (i.e. at
-      // least one person who didn't make the request). Otherwise we only need a single approver to exist.
-      const approverGroupMembersRequired = requesterIsApprover ? 2 : 1;
-
-      if (data.members.length >= approverGroupMembersRequired) {
-        return true;
-      }
+    const customer =
+      customers.find((c) => c.id === customerId) || getCustomerForAccount(account);
+    const approverGroupIds = customer?.approverGroupIds || [];
+    if (!approverGroupIds.length) {
+      return false;
     }
-    const ou = await fetchOU(account);
-    const ou_approvers = await fetchApprovers(ou.Id, "OU");
-    if (ou_approvers) {
-      const data = await getGroupMemberships(ou_approvers.groupIds);
-      const requesterIsApprover = checkGroupMembership(
-        props.groupIds,
-        ou_approvers.groupIds
-      );
-      // If the requester is also an approver, then we need at least 2 approvers to exist (i.e. at
-      // least one person who didn't make the request). Otherwise we only need a single approver to exist.
-      const approverGroupMembersRequired = requesterIsApprover ? 2 : 1;
-
-      if (data.members.length >= approverGroupMembersRequired) {
-        return true;
-      }
-    }
-    return false;
+    const data = await getGroupMemberships(approverGroupIds);
+    const requesterIsApprover = checkGroupMembership(
+      props.groupIds,
+      approverGroupIds
+    );
+    // If requester is in an approver group, ensure at least one additional approver exists.
+    const approverGroupMembersRequired = requesterIsApprover ? 2 : 1;
+    return (data?.members?.length || 0) >= approverGroupMembersRequired;
   }
 
   return (
