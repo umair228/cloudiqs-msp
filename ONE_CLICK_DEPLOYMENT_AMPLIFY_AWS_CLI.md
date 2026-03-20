@@ -39,10 +39,10 @@ If you are deploying in an AWS Organizations setup with delegated admin, prepare
 
 ## 2) Configure deployment parameters
 
-From repo root:
+From your local repository root:
 
 ```bash
-cd /home/runner/work/cloudiqs-msp/cloudiqs-msp/deployment
+cd deployment
 cp parameters-template.sh parameters.sh
 ```
 
@@ -66,7 +66,7 @@ Edit `parameters.sh` and set at least:
 If you use a separate TEAM account, run:
 
 ```bash
-cd /home/runner/work/cloudiqs-msp/cloudiqs-msp/deployment
+cd deployment
 chmod +x init.sh
 ./init.sh
 ```
@@ -83,7 +83,7 @@ This script enables trusted access and registers delegated admin for:
 Run the deployment script:
 
 ```bash
-cd /home/runner/work/cloudiqs-msp/cloudiqs-msp/deployment
+cd deployment
 chmod +x deploy.sh
 ./deploy.sh
 ```
@@ -125,7 +125,7 @@ Expected result:
 After changes:
 
 ```bash
-cd /home/runner/work/cloudiqs-msp/cloudiqs-msp/deployment
+cd deployment
 chmod +x update.sh
 ./update.sh
 ```
@@ -135,7 +135,7 @@ chmod +x update.sh
 ## 7) Destroy / cleanup
 
 ```bash
-cd /home/runner/work/cloudiqs-msp/cloudiqs-msp/deployment
+cd deployment
 chmod +x destroy.sh
 ./destroy.sh
 ```
@@ -149,13 +149,13 @@ This removes Amplify/CloudFormation resources created by the deployment flow.
 After you have `deployment/parameters.sh` ready, this is the full one-click execution:
 
 ```bash
-cd /home/runner/work/cloudiqs-msp/cloudiqs-msp/deployment && chmod +x init.sh deploy.sh && ./init.sh && ./deploy.sh
+cd deployment && chmod +x init.sh deploy.sh && ./init.sh && ./deploy.sh
 ```
 
 For non-Organizations or already-initialized environments:
 
 ```bash
-cd /home/runner/work/cloudiqs-msp/cloudiqs-msp/deployment && chmod +x deploy.sh && ./deploy.sh
+cd deployment && chmod +x deploy.sh && ./deploy.sh
 ```
 
 ---
