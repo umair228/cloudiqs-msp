@@ -26,8 +26,6 @@ fi
 if [ -z "$SECRET_NAME" ]; then
   git remote remove origin
   git remote add origin codecommit::$REGION://team-idc-app
-  git remote add team https://github.com/aws-samples/iam-identity-center-team.git
-  git pull team main
 
   if [[ ! -z "$TAGS" ]]; then
     if [[ ! -z "$UI_DOMAIN" ]]; then
@@ -83,7 +81,6 @@ if [ -z "$SECRET_NAME" ]; then
   fi
 
   git push origin main
-  git remote remove team
 else
   if [[ ! -z "$TAGS" ]]; then
     if [[ ! -z "$UI_DOMAIN" ]]; then
