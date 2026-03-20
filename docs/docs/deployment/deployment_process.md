@@ -55,7 +55,8 @@ Update the parameters in the **parameters.sh** file as follows:
 - **TEAM_ADMIN_GROUP** - Name of IAM Identity Center group for TEAM administrators
 - **TEAM_AUDITOR_GROUP** - Name of IAM Identity Center group for TEAM auditors
 - **CLOUDTRAIL_AUDIT_LOGS** - ARN of organization CloudTrail Lake event datastore
-- **SECRET_NAME** - Name of the Secret stored in AWS Secret Manager
+- **SECRET_NAME** *(optional)* - Name of the Secret stored in AWS Secret Manager **only when using an external repository** (GitHub/GitLab/Bitbucket)
+> Leave **SECRET_NAME** unset to use the default private CodeCommit repository in your AWS account (recommended for managed-identity deployment).
 > When using Github as the external repository ensure you use Tokens (classic) (https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#personal-access-tokens-classic) instead of Fine-grained tokens
 
 
@@ -76,7 +77,7 @@ TEAM_AUDITOR_GROUP="team_auditor_group_name"
 TAGS="tag1=value1 tag2=value2"
 CLOUDTRAIL_AUDIT_LOGS=arn:aws:cloudtrail:us-east-1:123456789101:eventdatastore/e646f20d-7959-4682-be84-6c5b8a37cf15
 UI_DOMAIN=portal.teamtest.online
-SECRET_NAME=TEAM-IDC-APP
+# SECRET_NAME=TEAM-IDC-APP
 ```
 
 ---
@@ -162,4 +163,3 @@ To deploy TEAM into management account:
     and uses **ORG_MASTER_PROFILE** to deploy the solution.
 
 2. Do **not** run the initialisation script **init.sh**. You can proceed straight to running the deployment script **deploy.sh**.
-
