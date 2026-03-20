@@ -56,7 +56,8 @@ TAGS="project=iam-identity-center-team environment=production"
 # CloudTrail Lake (if you have one, otherwise use "none")
 CLOUDTRAIL_AUDIT_LOGS=none
 
-# Optional: Custom repository secret (if using external repo)
+# Optional: Custom repository secret (only if using external repo)
+# Leave unset to keep deployment private in your AWS account via CodeCommit.
 # SECRET_NAME=TEAM-IDC-APP
 
 # Optional: Custom domain (uncomment if you have one)

@@ -60,7 +60,9 @@ Edit `parameters.sh` and set at least:
 - `TEAM_ADMIN_GROUP`
 - `TEAM_AUDITOR_GROUP`
 - `CLOUDTRAIL_AUDIT_LOGS`
-- Optional: `TAGS`, `UI_DOMAIN`, `SECRET_NAME`
+- Optional: `TAGS`, `UI_DOMAIN`, `SECRET_NAME` (only for external repositories)
+
+> For private deployment within your managed AWS identity, leave `SECRET_NAME` unset so Amplify is sourced from private AWS CodeCommit.
 
 > If your deployment is management-account-only, use `parameters-mgmt-template.sh` as your base.
 
