@@ -14,11 +14,9 @@ Run the **update.sh** bash script in the **deployment** folder to update the TEA
 
 The **update.sh** bash script performs the following actions:
 
-- Adds the AWS samples github repo as a git remote
-- Pulls the latest version of the TEAM code
-- Push the latest version to the TEAM code commit repo
-- Deploys an AWS CloudFormation stack which triggers the amplify build and deployment
-- Removes the AWS samples github repo as a git remote
+- Uses your current local repository code (typically synced from your GitHub `main`)
+- Pushes your current `main` branch to the TEAM CodeCommit repository
+- Deploys an AWS CloudFormation stack which triggers the Amplify build and deployment
 
   > Ensure that the named profile for the **TEAM Deployment account** has sufficient permissions before executing the **update.sh** script
 

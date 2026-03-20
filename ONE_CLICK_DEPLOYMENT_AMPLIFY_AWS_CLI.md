@@ -1,6 +1,11 @@
 # One-Click Deployment (AWS CLI + Amplify) for CloudiQS MSP
 
-This guide gives you a practical **one-click deployment flow** for this repository, aligned with the AWS TEAM deployment approach.
+This guide gives you a practical **one-click deployment flow** for this repository.
+
+It is designed so that **your current GitHub codebase is the source of truth**.  
+Operationally, deployment uses this flow:
+
+`your local repo (same code as GitHub main) -> CodeCommit main -> Amplify auto build/deploy`
 
 It uses:
 - **AWS CLI** (required)
@@ -90,6 +95,11 @@ chmod +x deploy.sh
 
 That command performs the end-to-end deployment workflow (AWS CLI + CloudFormation + Amplify pipeline bootstrap).
 
+Important behavior:
+- `deploy.sh` pushes your current local `main` branch to CodeCommit repository `team-idc-app`.
+- Amplify is connected through the deployed stack and automatically builds/deploys from CodeCommit.
+- No AWS samples upstream repository pull is required for this flow.
+
 ---
 
 ## 5) Verify deployment
@@ -130,6 +140,11 @@ chmod +x update.sh
 ./update.sh
 ```
 
+Update behavior in this repository:
+- Pushes your current local `main` to CodeCommit `team-idc-app`
+- Re-runs CloudFormation deployment for `TEAM-IDC-APP`
+- Triggers Amplify pipeline deployment automatically
+
 ---
 
 ## 7) Destroy / cleanup
@@ -163,5 +178,4 @@ cd deployment && chmod +x deploy.sh && ./deploy.sh
 ## Related references
 
 - Repo scripts: `deployment/init.sh`, `deployment/deploy.sh`, `deployment/update.sh`, `deployment/destroy.sh`
-- AWS TEAM reference project: https://github.com/aws-samples/iam-identity-center-team
 - Existing docs in this repo: `docs/docs/deployment/`
